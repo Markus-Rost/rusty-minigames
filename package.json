@@ -1,0 +1,23 @@
+{
+  "name": "rusty-minigames",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Discord application to allow interaction based mini games.",
+  "main": "main.js",
+  "scripts": {
+    "test": "node main.js debug",
+    "start": "node main.js"
+  },
+  "author": "MarkusRost",
+  "license": "ISC",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "discord-api-types": "^0.37.83",
+    "dotenv": "^16.4.5",
+    "got": "^14.2.1",
+    "got-ssrf": "^3.0.0",
+    "npm": "^10.7.0"
+  }
+}

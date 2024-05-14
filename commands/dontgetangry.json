@@ -1,0 +1,96 @@
+{
+	"id": "",
+	"application_id": "",
+	"type": 1,
+	"integration_types": [
+		0,
+		1
+	],
+	"contexts": [
+		0,
+		1,
+		2
+	],
+	"default_member_permissions": "68608",
+	"name": "mensch-aergere-dich-nicht",
+	"description": "Start a Mensch ärgere Dich nicht game.",
+	"name_localizations": {
+	},
+	"description_localizations": {
+		"de": "Starte ein Mensch ärgere Dich nicht Spiel."
+	},
+	"options": [
+		{
+			"type": 6,
+			"name": "player2",
+			"description": "The user to play against.",
+			"name_localizations": {
+				"de": "spieler2"
+			},
+			"description_localizations": {
+				"de": "Der Mitspieler."
+			},
+			"required": true
+		},
+		{
+			"type": 6,
+			"name": "player3",
+			"description": "Additional user to play against.",
+			"name_localizations": {
+				"de": "spieler3"
+			},
+			"description_localizations": {
+				"de": "Ein weiterer Mitspieler."
+			},
+			"required": false
+		},
+		{
+			"type": 6,
+			"name": "player4",
+			"description": "Additional user to play against.",
+			"name_localizations": {
+				"de": "spieler4"
+			},
+			"description_localizations": {
+				"de": "Ein weiterer Mitspieler."
+			},
+			"required": false
+		},
+		{
+			"type": 6,
+			"name": "player5",
+			"description": "Additional user to play against.",
+			"name_localizations": {
+				"de": "spieler5"
+			},
+			"description_localizations": {
+				"de": "Ein weiterer Mitspieler."
+			},
+			"required": false
+		},
+		{
+			"type": 6,
+			"name": "player6",
+			"description": "Additional user to play against.",
+			"name_localizations": {
+				"de": "spieler6"
+			},
+			"description_localizations": {
+				"de": "Ein weiterer Mitspieler."
+			},
+			"required": false
+		},
+		{
+			"type": 5,
+			"name": "allow-join",
+			"description": "Allow additional players to join the running game.",
+			"name_localizations": {
+				"de": "erlaube-beitritt"
+			},
+			"description_localizations": {
+				"de": "Erlaube weiteren Spielern dem laufenden Spiel beizutreten."
+			},
+			"required": false
+		}
+	]
+}

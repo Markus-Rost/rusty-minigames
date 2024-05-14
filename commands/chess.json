@@ -1,0 +1,37 @@
+{
+	"id": "",
+	"application_id": "",
+	"type": 1,
+	"integration_types": [
+		0,
+		1
+	],
+	"contexts": [
+		0,
+		1,
+		2
+	],
+	"default_member_permissions": "68608",
+	"name": "chess",
+	"description": "Start a game of chess.",
+	"name_localizations": {
+		"de": "schach"
+	},
+	"description_localizations": {
+		"de": "Starte ein Schachspiel."
+	},
+	"options": [
+		{
+			"type": 6,
+			"name": "opponent",
+			"description": "Challenge a player.",
+			"name_localizations": {
+				"de": "gegner"
+			},
+			"description_localizations": {
+				"de": "Fordere einen Spieler heraus."
+			},
+			"required": false
+		}
+	]
+}

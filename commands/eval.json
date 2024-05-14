@@ -1,0 +1,17 @@
+{
+	"id": "",
+	"application_id": "",
+	"guild_id": "",
+	"type": 1,
+	"default_member_permissions": "8",
+	"name": "eval",
+	"description": "Evaluate JS in the context of the bot.",
+	"options": [
+		{
+			"type": 3,
+			"name": "code",
+			"description": "The code to execute.",
+			"required": false
+		}
+	]
+}

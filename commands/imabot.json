@@ -1,0 +1,18 @@
+{
+	"id": "",
+	"application_id": "",
+	"type": 1,
+	"integration_types": [
+		0,
+		1
+	],
+	"contexts": [
+		0,
+		1,
+		2
+	],
+	"default_member_permissions": "68608",
+	"name": "imabot",
+	"description": "Toggle the bot playing for you.",
+	"options": []
+}

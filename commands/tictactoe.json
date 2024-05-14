@@ -1,0 +1,47 @@
+{
+	"id": "",
+	"application_id": "",
+	"type": 1,
+	"integration_types": [
+		0,
+		1
+	],
+	"contexts": [
+		0,
+		1,
+		2
+	],
+	"default_member_permissions": "68608",
+	"name": "tictactoe",
+	"description": "Start a Tic Tac Toe game.",
+	"name_localizations": {
+	},
+	"description_localizations": {
+		"de": "Starte eine Runde Tic Tac Toe."
+	},
+	"options": [
+		{
+			"type": 5,
+			"name": "4x4",
+			"description": "Play on a 4×4 grid.",
+			"name_localizations": {
+			},
+			"description_localizations": {
+				"de": "Spiele auf einem 4×4-Feld."
+			},
+			"required": false
+		},
+		{
+			"type": 6,
+			"name": "opponent",
+			"description": "Challenge a player.",
+			"name_localizations": {
+				"de": "gegner"
+			},
+			"description_localizations": {
+				"de": "Fordere einen Spieler heraus."
+			},
+			"required": false
+		}
+	]
+}

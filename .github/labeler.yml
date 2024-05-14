@@ -1,0 +1,5 @@
+# Add 'translation' label to any change to i18n files
+translation:
+- changed-files:
+  - any-glob-to-any-file:
+    - 'i18n/*.json'

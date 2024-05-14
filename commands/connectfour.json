@@ -1,0 +1,119 @@
+{
+	"id": "",
+	"application_id": "",
+	"type": 1,
+	"integration_types": [
+		0,
+		1
+	],
+	"contexts": [
+		0,
+		1,
+		2
+	],
+	"default_member_permissions": "68608",
+	"name": "connectfour",
+	"description": "Start a connect four game.",
+	"name_localizations": {
+		"de": "viergewinnt"
+	},
+	"description_localizations": {
+		"de": "Starte ein Spiel Vier gewinnt."
+	},
+	"options": [
+		{
+			"type": 6,
+			"name": "opponent",
+			"description": "Challenge a player.",
+			"name_localizations": {
+				"de": "gegner"
+			},
+			"description_localizations": {
+				"de": "Fordere einen Spieler heraus."
+			},
+			"required": false
+		},
+		{
+			"type": 4,
+			"name": "width",
+			"description": "Select the field width.",
+			"name_localizations": {
+				"de": "breite"
+			},
+			"description_localizations": {
+				"de": "Wähle die Feldbreite."
+			},
+			"required": false,
+			"choices": [
+				{
+					"name": "5",
+					"value": 5
+				},
+				{
+					"name": "6",
+					"value": 6
+				},
+				{
+					"name": "7 (Default)",
+					"name_localizations": {
+						"de": "7 (Standard)"
+					},
+					"value": 7
+				},
+				{
+					"name": "8",
+					"value": 8
+				},
+				{
+					"name": "9",
+					"value": 9
+				},
+				{
+					"name": "10",
+					"value": 10
+				}
+			]
+		},
+		{
+			"type": 4,
+			"name": "height",
+			"description": "Select the field height.",
+			"name_localizations": {
+				"de": "höhe"
+			},
+			"description_localizations": {
+				"de": "Wähle die Feldhöhe."
+			},
+			"required": false,
+			"choices": [
+				{
+					"name": "5",
+					"value": 5
+				},
+				{
+					"name": "6 (Default)",
+					"name_localizations": {
+						"de": "6 (Standard)"
+					},
+					"value": 6
+				},
+				{
+					"name": "7",
+					"value": 7
+				},
+				{
+					"name": "8",
+					"value": 8
+				},
+				{
+					"name": "9",
+					"value": 9
+				},
+				{
+					"name": "10",
+					"value": 10
+				}
+			]
+		}
+	]
+}
