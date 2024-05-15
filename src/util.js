@@ -1,9 +1,12 @@
+import { inspect } from 'node:util';
 import { readdir, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import gotDefault from 'got';
 import { gotSsrf } from 'got-ssrf';
 import { ComponentType, FormattingPatterns, RouteBases, Routes } from 'discord-api-types/v10';
 const require = createRequire(import.meta.url);
+
+inspect.defaultOptions = {compact: false, breakLength: Infinity};
 
 globalThis.isDebug = ( process.argv[2] === 'debug' );
 

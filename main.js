@@ -137,7 +137,7 @@ function interactionCreate(interaction) {
 					/** @type {String?} */
 					let text = getCommandOption(interaction, 'code')?.value;
 					if ( text ) {
-						setTimeout( evalInteraction, 1, interaction, text ).unref();
+						setTimeout( evalInteraction, 3000, interaction, text ).unref();
 						result.type = InteractionResponseType.DeferredChannelMessageWithSource;
 						break;
 					}
