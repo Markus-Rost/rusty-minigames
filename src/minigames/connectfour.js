@@ -41,10 +41,10 @@ function connectfour_slash(interaction) {
 	else components.push(buildActionRow(...allButtons));
 	if ( opponent ) {
 		allowed_mentions.users = [opponent];
-		content += getMessage(interaction.guild_locale, 'connectfour_challenge', `<@${interaction.user.id}>`, `<@${opponent}>`, `<@${opponent}>`);
+		text += getMessage(interaction.guild_locale, 'connectfour_challenge', `<@${interaction.user.id}>`, `<@${opponent}>`, `<@${opponent}>`);
 		components.push( buildActionRow( buildButton('connectfour_no', ButtonStyle.Danger, null, getMessage(interaction.guild_locale, 'button_decline')) ) );
 	}
-	else content += getMessage(interaction.guild_locale, 'connectfour_start', `<@${interaction.user.id}>`);
+	else text += getMessage(interaction.guild_locale, 'connectfour_start', `<@${interaction.user.id}>`);
 	let gameGrid = '\n\n' + emojiNumberList.slice(0, fieldSize[0]).join('') + ( '\n' + '⭕'.repeat(fieldSize[0]) ).repeat(fieldSize[1]);
 	return {
 		type: InteractionResponseType.ChannelMessageWithSource,
