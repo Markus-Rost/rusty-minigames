@@ -1,4 +1,4 @@
-import { ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10.js';
+import { ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
 import { buildButton, buildActionRow, emojiNumberList, getCommandOption, getMessage } from '../util.js';
 
 // /eval code:updateApplicationCommand('connectfour')
