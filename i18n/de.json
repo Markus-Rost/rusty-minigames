@@ -42,7 +42,7 @@
 	"dontgetangry_giveup_yes": "Aufgeben!",
 	"dontgetangry_join": "Tritt dem Spiel als zusätzlicher Spieler bei!",
 	"dontgetangry_join_full": "Das Spiel ist bereits voll!",
-	"dontgetangry_roll": "It's %s turn and they rolled a %s.",
+	"dontgetangry_roll": "%s ist am Zug und hat eine %s gewürfelt.",
 	"dontgetangry_roll_try": " Dies war der %s Versuch.",
 	"dontgetangry_turn": "%s ist immer noch am Zug.",
 	"error_no_bots": "Du kannst nicht gegen Bots oder dich selbst spielen!",
