@@ -464,7 +464,7 @@ function chess_button(interaction, [player1, player2, currentPlayer]) {
 				let drawRule = ( castling.slice(4) === '50' ? '50' : '3' );
 				allowed_mentions.users = [currentPlayer];
 				let textParts = text.split('\n');
-				textParts[2] = getMessage(interaction.guild_locale, 'chess_draw_offer_' + drawRule);
+				textParts[2] = getMessage(interaction.guild_locale, 'chess_draw_offer_' + drawRule, `<@${currentPlayer}>`);
 				text = textParts.join('\n');
 				components.forEach( row => row.components.forEach( button => button.disabled = true ) );
 				components.push( buildActionRow(
