@@ -80,7 +80,7 @@ function chess_slash(interaction) {
  * @param {String[]} playerList
  * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
-function chess_button(interaction, ...[player1, player2, currentPlayer]) {
+function chess_button(interaction, [player1, player2, currentPlayer]) {
 	if ( interaction.data.custom_id === 'chess_no' && interaction.user.id === player2 ) {
 		let content = '**' + getMessage(interaction.guild_locale, 'chess') + '**\n';
 		content += getMessage(interaction.guild_locale, 'challenge_declined', `<@${player2}>`, `<@${player1}>`);

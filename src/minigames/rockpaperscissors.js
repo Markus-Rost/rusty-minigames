@@ -49,7 +49,7 @@ function rockpaperscissors_slash(interaction) {
  * @param {String[]} playerList
  * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
-function rockpaperscissors_button(interaction, ...[player1, player2]) {
+function rockpaperscissors_button(interaction, [player1, player2]) {
 	let opponent = ( interaction.user.id === player2 ? player1 : player2 );
 	/** @type {import('discord-api-types/v10').APIButtonComponentWithCustomId[]} */
 	let components = interaction.message.components[0].components;

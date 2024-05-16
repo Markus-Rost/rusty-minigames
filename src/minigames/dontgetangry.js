@@ -277,7 +277,7 @@ function dontgetangry_join(interaction, ...playerList) {
  * @param {String[]} playerList
  * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
-function dontgetangry_button(interaction, ...[player1, player2, player3, player4, player5, player6, currentPlayer]) {
+function dontgetangry_button(interaction, [player1, player2, player3, player4, player5, player6, currentPlayer]) {
 	if ( !currentPlayer ) {
 		if ( player6 ) {
 			currentPlayer = player6;
