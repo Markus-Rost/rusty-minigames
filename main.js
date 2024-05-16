@@ -12,6 +12,7 @@ import chess from './src/minigames/chess.js';
 const PUBLIC_KEY = ( process.env.key ? await subtle.importKey('raw', Buffer.from(process.env.key, 'hex'), 'Ed25519', true, ['verify']).catch(console.log) : null );
 
 const server = createServer( (req, res) => {
+	let start = Date.now();
 	let signature = req.headers['x-signature-ed25519'];
 	let timestamp = req.headers['x-signature-timestamp'];
 	if ( !PUBLIC_KEY || !signature || !timestamp || req.method !== 'POST' || req.url !== process.env.interactions_path ) {
@@ -48,6 +49,7 @@ const server = createServer( (req, res) => {
 			});
 			res.write( response );
 			res.end();
+			console.log('Response time:', Date.now() - start);
 		}
 		catch ( jsonerror ) {
 			console.log( jsonerror );

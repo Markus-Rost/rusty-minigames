@@ -108,7 +108,7 @@ function chess_button(interaction, [player1, player2, currentPlayer]) {
 			}
 		}
 	};
-	let gameGrid = interaction.message.content.split('\n\n')[1].replace(/(?<=>)[^<]+/g, '').replace(/<:(\w\w)?[bw]s:\d+>/g, ' $1').slice(1).split(' ');
+	let gameGrid = interaction.message.content.split('\n\n')[1].replace(/(?<=[<:>])[^<:>]+\n[^<:>]*/g, '').replace(/<?:(\w\w)?[bw]s:(?:\d+>)?/g, ' $1').slice(1).split(' ');
 	if ( interaction.data.custom_id === 'chess_resign' ) {
 		let components = interaction.message.components.slice(0, -1);
 		components.push( buildActionRow(
