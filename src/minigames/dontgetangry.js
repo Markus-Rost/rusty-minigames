@@ -144,7 +144,6 @@ function dontgetangry_slash(interaction) {
 	let playerUsers = [
 		interaction.user,
 		getCommandUserOption(interaction, 'player2'),
-		getCommandUserOption(interaction, 'player2'),
 		getCommandUserOption(interaction, 'player3'),
 		getCommandUserOption(interaction, 'player4'),
 		getCommandUserOption(interaction, 'player5'),

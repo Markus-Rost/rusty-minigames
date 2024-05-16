@@ -52,7 +52,7 @@
 	"error_unknown_interaction": "Fehler: Unbekannte Interaktion!",
 	"game_end_draw": "Das Spiel endete in einem Unentschieden.",
 	"game_end_won": "%s hat das Spiel gewonnen!",
-	"game_turn": "$s ist am Zug.",
+	"game_turn": "%s ist am Zug.",
 	"imabot": "Übernehme selbst wieder.",
 	"imabot_disable": "Der Computer spielt jetzt nicht mehr für dich.",
 	"imabot_disable_note": "**Hinweis:** Es kann einen Moment dauern bevor du wieder selbst ziehen kannst.",
