@@ -199,7 +199,7 @@ function dontgetangry_slash(interaction) {
 			break;
 		}
 	}
-	if ( getCommandOption('allow-join')?.value ) {
+	if ( getCommandOption(interaction, 'allow-join')?.value ) {
 		startingPlayer = playerUsers[0];
 		components.push( buildActionRow(
 			buildButton('dontgetangry_join', ButtonStyle.Success, '🆕', getMessage(interaction.guild_locale, 'dontgetangry_join'))
