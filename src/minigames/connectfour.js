@@ -1,5 +1,5 @@
 import { ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
-import { buildButton, buildActionRow, emojiNumberList, getCommandOption, getMessage } from '../util.js';
+import { buildButton, buildActionRow, emojiNumberList, getCommandOption, getCommandUserOption, getMessage } from '../util.js';
 
 // /eval code:updateApplicationCommand('connectfour')
 
@@ -8,10 +8,8 @@ import { buildButton, buildActionRow, emojiNumberList, getCommandOption, getMess
  * @returns {import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function connectfour_slash(interaction) {
-	/** @type {String} */
-	let opponent = getCommandOption(interaction, 'opponent')?.value;
-	let opponentUser = interaction.data.resolved?.users?.[opponent];
-	if ( opponentUser && ( opponentUser.bot || opponent === interaction.user.id ) ) return {
+	let opponentUser = getCommandUserOption(interaction, 'opponent');
+	if ( opponentUser && ( opponentUser.bot || opponentUser.id === interaction.user.id ) ) return {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
 			content: getMessage(interaction.locale, 'error_no_bots'),
@@ -21,6 +19,7 @@ function connectfour_slash(interaction) {
 			}
 		}
 	};
+	let opponent = opponentUser?.id;
 	let text = '**' + getMessage(interaction.guild_locale, 'connectfour') + '**\n';
 	/** @type {import('discord-api-types/v10').APIAllowedMentions} */
 	let allowed_mentions = {parse: []};

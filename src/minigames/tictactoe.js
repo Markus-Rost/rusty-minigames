@@ -1,5 +1,5 @@
 import { ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
-import { getMessage, getCommandOption, buildButton, buildActionRow } from '../util.js';
+import { getMessage, getCommandOption, getCommandUserOption, buildButton, buildActionRow } from '../util.js';
 
 // /eval code:updateApplicationCommand('tictactoe')
 
@@ -45,10 +45,8 @@ const nothingEmoji = {
  * @returns {import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function tictactoe_slash(interaction) {
-	/** @type {String} */
-	let opponent = getCommandOption(interaction, 'opponent')?.value;
-	let opponentUser = interaction.data.resolved?.users?.[opponent];
-	if ( opponentUser && ( opponentUser.bot || opponent === interaction.user.id ) ) return {
+	let opponentUser = getCommandUserOption(interaction, 'opponent');
+	if ( opponentUser && ( opponentUser.bot || opponentUser.id === interaction.user.id ) ) return {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
 			content: getMessage(interaction.locale, 'error_no_bots'),
@@ -58,6 +56,7 @@ function tictactoe_slash(interaction) {
 			}
 		}
 	};
+	let opponent = opponentUser?.id;
 	/** @type {Boolean} */
 	let is4x4 = getCommandOption(interaction, '4x4')?.value;
 	let content = '**' + getMessage(interaction.guild_locale, is4x4 ? 'tictactoe_4x4' : 'tictactoe') + '**\n';

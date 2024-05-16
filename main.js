@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import { createServer } from 'node:http';
 import { subtle } from 'node:crypto';
-import { MessageFlags, InteractionType, InteractionResponseType, ApplicationCommandType, ApplicationCommandOptionType, ComponentType, TextInputStyle } from 'discord-api-types/v10';
-import { getMessage, botPlayers, evalInteraction, getCommandOption, buildActionRow } from './src/util.js';
+import { MessageFlags, InteractionType, InteractionResponseType, ApplicationCommandType, ApplicationCommandOptionType, ComponentType, TextInputStyle, ButtonStyle } from 'discord-api-types/v10';
+import { getMessage, botPlayers, evalInteraction, getCommandOption, buildActionRow, buildButton } from './src/util.js';
 import rockpaperscissors from './src/minigames/rockpaperscissors.js';
 import tictactoe from './src/minigames/tictactoe.js';
 import connectfour from './src/minigames/connectfour.js';
@@ -129,6 +129,9 @@ function interactionCreate(interaction) {
 						result.data.content += getMessage(interaction.locale, 'imabot_enable_note') + '\n';
 						result.data.content += getMessage(interaction.locale, 'imabot_supported') + '\n';
 						result.data.content += '- ' + getMessage(interaction.locale, 'dontgetangry');
+						result.data.components = [ buildActionRow(
+							buildButton('imabot', ButtonStyle.Success, '🤖', 'imabot')
+						) ];
 					}
 					break;
 				}
@@ -173,6 +176,14 @@ function interactionCreate(interaction) {
 			if ( interaction.data.component_type !== ComponentType.Button ) break;
 			interaction.user ??= interaction.member?.user;
 			console.log( ( interaction.guild_id ?? '@' + interaction.user.id ) + ': Button: ' + interaction.data.custom_id );
+			if ( interaction.data.custom_id === 'imabot' ) {
+				botPlayers.delete(interaction.user.id);
+				result.type = InteractionResponseType.UpdateMessage;
+				result.data.content = '🤖 ' + getMessage(interaction.locale, 'imabot_disable');
+				result.data.content += '\n' + getMessage(interaction.locale, 'imabot_disable_note');
+				result.data.components = [];
+				break;
+			}
 			if ( !interaction.message.content ) break;
 			let playerList = interaction.message.content.split('\n\n')[0].match(/(?<=<@!?)\d+(?=>)/g)?.slice(0, 7) ?? [];
 			if ( !playerList[0] ) break;

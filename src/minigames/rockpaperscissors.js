@@ -1,5 +1,5 @@
 import { ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
-import { getMessage, getCommandOption, buildActionRow, buildButton } from '../util.js';
+import { getMessage, getCommandUserOption, buildActionRow, buildButton } from '../util.js';
 
 // /eval code:updateApplicationCommand('rockpaperscissors')
 
@@ -8,10 +8,8 @@ import { getMessage, getCommandOption, buildActionRow, buildButton } from '../ut
  * @returns {import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function rockpaperscissors_slash(interaction) {
-	/** @type {String} */
-	let opponent = getCommandOption(interaction, 'opponent')?.value;
-	let opponentUser = interaction.data.resolved?.users?.[opponent];
-	if ( !opponentUser || opponentUser.bot || opponent === interaction.user.id ) return {
+	let opponentUser = getCommandUserOption(interaction, 'opponent');
+	if ( !opponentUser || opponentUser.bot || opponentUser.id === interaction.user.id ) return {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
 			content: getMessage(interaction.locale, 'error_no_bots'),
@@ -21,6 +19,7 @@ function rockpaperscissors_slash(interaction) {
 			}
 		}
 	}
+	let opponent = opponentUser?.id;
 	let content = '**' + getMessage(interaction.guild_locale, 'rockpaperscissors') + '**';
 	content += `\n<@${interaction.user.id}> vs. <@${opponent}>\n`;
 	content += getMessage(interaction.guild_locale, 'rockpaperscissors_choose_both');

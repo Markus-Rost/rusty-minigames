@@ -3,7 +3,7 @@ import { readdir, existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import gotDefault from 'got';
 import { gotSsrf } from 'got-ssrf';
-import { ComponentType, FormattingPatterns, RouteBases, Routes } from 'discord-api-types/v10';
+import { ApplicationCommandOptionType, ComponentType, FormattingPatterns, RouteBases, Routes } from 'discord-api-types/v10';
 const require = createRequire(import.meta.url);
 
 inspect.defaultOptions = {compact: false, breakLength: Infinity};
@@ -20,6 +20,7 @@ readdir( './i18n', (error, files) => {
 		allLangs.set(lang, new Map(Object.entries(translations)));
 	} );
 } );
+
 /**
  * Get a translated message.
  * @param {import('discord-api-types/v10').LocaleString} locale
@@ -27,7 +28,7 @@ readdir( './i18n', (error, files) => {
  * @param {String[]} args
  * @returns {String}
  */
-export function getMessage(locale, message, ...args) {
+export function getMessage(locale = 'en-US', message, ...args) {
 	let text = allLangs.get(locale)?.get(message) || allLangs.get('en-US')?.get(message) || '⧼' + message + ( args.length ? ': ' + args.join(', ') : '' ) + '⧽';
 	for ( let arg of args ) {
 		text = text.replace('%s', arg);
@@ -85,7 +86,7 @@ export async function evalInteraction(interaction, text) {
 			parse: []
 		}
 	}
-	reply(interaction, message)
+	updateMessage(interaction, message)
 }
 
 /** @type {['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟']} */
@@ -114,14 +115,24 @@ export function getCommandOption(interaction, optionName) {
 }
 
 /**
- * @template {import('discord-api-types/v10').APIButtonComponentWithCustomId} APIButtonComponentWithCustomId
- * @param {APIButtonComponentWithCustomId[]} components
- * @returns {import('discord-api-types/v10').APIActionRowComponent<APIButtonComponentWithCustomId>}
+ * @param {import('discord-api-types/v10').APIChatInputApplicationCommandInteraction} interaction 
+ * @param {String} optionName 
+ * @returns {import('discord-api-types/v10').APIUser?}
+ */
+export function getCommandUserOption(interaction, optionName) {
+	let userOption = getCommandOption(interaction, optionName);
+	if ( userOption?.type !== ApplicationCommandOptionType.User ) return null;
+	return interaction.data.resolved?.users?.[userOption.value];
+}
+
+/**
+ * @param {import('discord-api-types/v10').APIButtonComponentWithCustomId[]} components
+ * @returns {import('discord-api-types/v10').APIActionRowComponent<import('discord-api-types/v10').APIButtonComponentWithCustomId>}
  */
 export function buildActionRow(...components) {
 	return {
 		type: ComponentType.ActionRow,
-		components
+		components: components.filter( component => component )
 	};
 }
 
@@ -146,12 +157,12 @@ export function buildButton(custom_id, style, emoji, label, disabled) {
  * @param {import('discord-api-types/v10').APIInteraction} interaction
  * @param {import('discord-api-types/v10').APIInteractionResponseCallbackData} message
  */
-export function reply(interaction, message) {
+export function updateMessage(interaction, message) {
 	if ( !message.components ) message.components = [];
-	got.patch( RouteBases.api + Routes.webhookMessage(interaction.application_id, interaction.token), {
+	return got.patch( RouteBases.api + Routes.webhookMessage(interaction.application_id, interaction.token), {
 		json: message,
 		throwHttpErrors: true
 	} ).catch( error => {
-		console.log( `- Error while replying to the interaction: ${error}` );
+		console.log( `- Error while updating to the interaction message: ${error}` );
 	} );
 }

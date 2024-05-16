@@ -1,4 +1,5 @@
-import { emojiNumberList, emojiMedalList, botPlayers, botPlayedGames } from '../util.js';
+import { ApplicationCommandOptionType, ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
+import { emojiNumberList, emojiMedalList, botPlayers, botPlayedGames, getCommandOption, getCommandUserOption, getMessage, buildActionRow, buildButton, updateMessage } from '../util.js';
 
 // /eval code:updateApplicationCommand('dontgetangry')
 
@@ -135,33 +136,40 @@ const gamePlayers = [
 ];
 
 /**
- * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @param {import('discord-api-types/v10').APIChatInputApplicationCommandInteraction} interaction
+ * @returns {import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function dontgetangry_slash(interaction) {
-	/** @type {{id: String, username: String, color: emojiPlayerColor}[]} */
+	/** @type {{id: String, color: emojiPlayerColor}[]} */
 	let playerUsers = [
 		interaction.user,
-		interaction.options.getUser('player2'),
-		interaction.options.getUser('player3'),
-		interaction.options.getUser('player4'),
-		interaction.options.getUser('player5'),
-		interaction.options.getUser('player6')
+		getCommandUserOption(interaction, 'player2'),
+		getCommandUserOption(interaction, 'player2'),
+		getCommandUserOption(interaction, 'player3'),
+		getCommandUserOption(interaction, 'player4'),
+		getCommandUserOption(interaction, 'player5'),
+		getCommandUserOption(interaction, 'player6')
 	].filter( playerUser => playerUser && ( !playerUser.bot || botPlayers.has(playerUser.id) ) ).map( playerUser => {
 		return {
 			id: playerUser.id,
-			username: playerUser.username,
 			color: null
 		};
 	} );
-	if ( playerUsers.length < ( interaction.options.data.filter( option => option.type === ApplicationCommandOptionType.User ).length + 1 ) ) {
-		return interaction.reply( {
-			content: ( isGermanInteraction(interaction) ? 'Du kannst nicht gegen unbekannte Bots spielen!' : 'You can\'t play against unknown bots!' ),
-			ephemeral: true
-		} ).catch( error => console.log( '- ' + error ) );
+	if ( playerUsers.length < ( ( interaction.data.options?.filter( option => option.type === ApplicationCommandOptionType.User ).length ?? 0 ) + 1 ) ) {
+		return {
+			type: InteractionResponseType.ChannelMessageWithSource,
+			data: {
+				content: getMessage(interaction.locale, 'error_unknown_bots'),
+				flags: MessageFlags.Ephemeral,
+				allowed_mentions: {
+					parse: []
+				}
+			}
+		};
 	}
 	let isBig = ( playerUsers.length > 4 ? 1 : 0 );
 	let gameGrid = gameBoard[isBig].slice();
-	let text = `**Mensch ärgere Dich nicht**\n`;
+	let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
 	if ( playerUsers.length === 2 ) {
 		playerUsers[0].color = emojiPlayerColors[0];
 		playerUsers[1].color = emojiPlayerColors[2];
@@ -177,12 +185,12 @@ function dontgetangry_slash(interaction) {
 			return `<@${playerUser.id}> (${playerUser.color})`;
 		} ).join(' vs. ');
 	}
-	let components = [
-		new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲')
-	];
-	if ( playerUsers.length === 3 ) {
-		components.push(new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_big').setEmoji('♻️'));
-	}
+	let components = [ buildActionRow(
+		buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die')),
+		( playerUsers.length === 3 ?
+			buildButton('dontgetangry_big', ButtonStyle.Danger, '♻️', getMessage(interaction.guild_locale, 'dontgetangry_big'))
+		: null )
+	) ];
 	let startingPlayer = playerUsers[1];
 	while ( botPlayers.has(startingPlayer.id) ) {
 		startingPlayer = playerUsers[playerUsers.indexOf(startingPlayer) + 1];
@@ -191,69 +199,45 @@ function dontgetangry_slash(interaction) {
 			break;
 		}
 	}
-	let allowJoin = interaction.options.getBoolean('allow-join');
-	if ( allowJoin ) startingPlayer = playerUsers[0];
-	let joinButton = new ButtonBuilder().setStyle(ButtonStyle.Success).setCustomId('dontgetangry_join').setEmoji('🆕');
-	if ( isGermanGuild(interaction) ) {
-		text += `\n<@${startingPlayer.id}> (${startingPlayer.color}) ist am Zug.`;
-		components[0].setLabel('Würfel.');
-		if ( components[1] ) components[1].setLabel('Wechsle zum 6v6-Brett.');
-		if ( allowJoin ) joinButton.setLabel('Tritt dem Spiel als zusätzlicher Spieler bei!');
+	if ( getCommandOption('allow-join')?.value ) {
+		startingPlayer = playerUsers[0];
+		components.push( buildActionRow(
+			buildButton('dontgetangry_join', ButtonStyle.Success, '🆕', getMessage(interaction.guild_locale, 'dontgetangry_join'))
+		) );
 	}
-	else {
-		text += `\nIt's <@${startingPlayer.id}> (${startingPlayer.color}) turn.`;
-		components[0].setLabel('Roll the dice.');
-		if ( components[1] ) components[1].setLabel('Switch to the 6v6 board.');
-		if ( allowJoin ) joinButton.setLabel('Join the game as additional player!');
-	}
-	let componentRows = [new ActionRowBuilder().addComponents(...components)];
-	if ( allowJoin ) componentRows.push(new ActionRowBuilder().addComponents(joinButton));
-	if ( interaction.guildId === '417255782820872192' ) return interaction.deferReply().then( () => {
-		interaction.guild.channels.cache.get('878593019119546379').send( {
+	text += getMessage(interaction.guild_locale, 'game_turn', `<@${startingPlayer.id}> (${startingPlayer.color})`);
+	return {
+		type: InteractionResponseType.ChannelMessageWithSource,
+		data: {
 			content: text + '\n\n' + gameGrid.join(''),
-			allowedMentions: {
+			allowed_mentions: {
 				users: [...new Set(playerUsers.map( playerUser => playerUser.id ))]
 			},
-			components: componentRows
-		} ).then( message => {
-			message.startThread( {
-				name: playerUsers.map( playerUser => playerUser.username ).join(' vs. ').substring(0, 100),
-				autoArchiveDuration: ThreadAutoArchiveDuration.OneWeek,
-				reason: 'Mensch ärgere Dich nicht'
-			} ).catch( error => console.log( '- ' + error ) );
-			return interaction.editReply( {
-				content: '**Mensch ärgere Dich nicht**\n' + text.split('\n')[1] + `\nGespielt wird in <#878593019119546379>, für Diskussionen steht <#${message.id}> zur Verfügung.`,
-				allowedMentions: {
-					users: [...new Set(playerUsers.map( playerUser => playerUser.id ))]
-				},
-				components: [new ActionRowBuilder().addComponents(
-					new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(message.url).setEmoji('🎲').setLabel('Zum Spielbrett.')
-				)]
-			} ).catch( error => console.log( '- ' + error ) );
-		}, error => console.log( '- ' + error ) );
-	}, error => console.log( '- ' + error ) );
-	return interaction.reply( {
-		content: text + '\n\n' + gameGrid.join(''),
-		allowedMentions: {
-			users: [...new Set(playerUsers.map( playerUser => playerUser.id ))]
-		},
-		components: componentRows
-	} ).catch(  error => console.log( '- ' + error ) );
+			components
+		}
+	};
 }
 
 /**
- * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
  * @param {String[]} playerList
+ * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function dontgetangry_join(interaction, ...playerList) {
 	let text = interaction.message.content.split('\n');
 	let gameGrid = [...text.splice(-11).join('\n')];
 	let isBig = ( gameGrid.length > 150 ? 1 : 0 );
 	playerList = playerList.filter( player => player ).slice(0, -1);
-	if ( playerList.length >= 6 ) return interaction.reply( {
-		content: ( isGermanInteraction(interaction) ? 'Das Spiel ist bereits voll!' : 'The game is already full!' ),
-		ephemeral: true
-	} ).catch( error => console.log( '- ' + error ) );
+	if ( playerList.length >= 6 ) return {
+		type: InteractionResponseType.ChannelMessageWithSource,
+		data: {
+			content: getMessage(interaction.locale, 'dontgetangry_join_full'),
+			flags: MessageFlags.Ephemeral,
+			allowed_mentions: {
+				parse: []
+			}
+		}
+	};
 	if ( !isBig && playerList.length >= 4 ) {
 		isBig = 1;
 		gameGrid = gameBoard[isBig].slice();
@@ -267,37 +251,32 @@ function dontgetangry_join(interaction, ...playerList) {
 	players.splice(emojiPlayerColors.indexOf(playerColor), 0, `<@${interaction.user.id}> (${playerColor})`);
 	text[1] = players.join(' vs. ');
 	let components = [
-		new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲')
+		buildActionRow(
+			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die')),
+			( players.length === 3 ?
+				buildButton('dontgetangry_big', ButtonStyle.Danger, '♻️', getMessage(interaction.guild_locale, 'dontgetangry_big'))
+			: null )
+		),
+		buildActionRow(
+			buildButton('dontgetangry_join', ButtonStyle.Success, '🆕', getMessage(interaction.guild_locale, 'dontgetangry_join'), players.length === 6)
+		)
 	];
-	if ( players.length === 3 ) {
-		components.push(new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_big').setEmoji('♻️'));
-	}
-	let joinButton = new ButtonBuilder().setStyle(ButtonStyle.Success).setCustomId('dontgetangry_join').setEmoji('🆕');
-	if ( players.length === 6 ) joinButton.setDisabled();
-	if ( isGermanGuild(interaction) ) {
-		components[0].setLabel('Würfel.');
-		if ( components[1] ) components[1].setLabel('Wechsle zum 6v6-Brett.');
-		joinButton.setLabel('Tritt dem Spiel als zusätzlicher Spieler bei!');
-	}
-	else {
-		components[0].setLabel('Roll the dice.');
-		if ( components[1] ) components[1].setLabel('Switch to the 6v6 board.');
-		joinButton.setLabel('Join the game as additional player!');
-	}
-	let componentRows = [
-		new ActionRowBuilder().addComponents(...components),
-		new ActionRowBuilder().addComponents(joinButton)
-	];
-	return interaction.update( {
-		content: text.join('\n') + '\n' + gameGrid.join(''),
-		allowedMentions: {users: [playerList[0]]},
-		components: componentRows
-	} ).catch( error => console.log( '- ' + error ) );
+	return {
+		type: InteractionResponseType.UpdateMessage,
+		data: {
+			content: text.join('\n') + '\n' + gameGrid.join(''),
+			allowed_mentions: {
+				users: [playerList[0]]
+			},
+			components
+		}
+	};
 }
 
 /**
- * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
  * @param {String[]} playerList
+ * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function dontgetangry_button(interaction, ...[player1, player2, player3, player4, player5, player6, currentPlayer]) {
 	if ( !currentPlayer ) {
@@ -318,63 +297,92 @@ function dontgetangry_button(interaction, ...[player1, player2, player3, player4
 			player3 = null;
 		}
 	}
-	if ( botPlayedGames.has(interaction.message.id) ) {
-		if ( interaction.user.id !== currentPlayer && !botPlayers.has(interaction.user.id) ) {
-			return interaction.reply( {
-				content: ( isGermanInteraction(interaction) ? 'Du bist gerade nicht am Zug.' : 'It\'s not your turn right now.' ),
-				ephemeral: true
-			} ).catch( error => console.log( '- ' + error ) );
-		}
-		let text = '🤖 ';
-		if ( isGermanInteraction(interaction) ) {
-			text += 'Der Computer spielt derzeit für dich.\n';
-			if ( botPlayers.has(interaction.user.id) ) text += 'Nutze `?imabot` um wieder zu übernehmen.';
-			else text += 'Bitte warte noch einen Augenblick bevor du wieder übernehmen kannst.';
-		}
-		else {
-			text += 'The computer is currently playing for you.\n';
-			if ( botPlayers.has(interaction.user.id) ) text += 'Use `?imabot` to take over again.';
-			else text += 'Please wait a moment before you can take over again.';
-		}
-		return interaction.reply( {
-			content: text,
-			ephemeral: true
-		} ).catch( error => console.log( '- ' + error ) );
-	}
-	if ( interaction.customId === 'dontgetangry_big' ) {
+	if ( interaction.data.custom_id === 'dontgetangry_big' ) {
 		let gameGrid = gameBoard[1].slice();
-		let text = `**Mensch ärgere Dich nicht**\n`;
+		let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
 		text += `<@${player1}> (${emojiPlayerColors[0]}) vs. <@${player2}> (${emojiPlayerColors[2]}) vs. <@${player3}> (${emojiPlayerColors[4]})`;
 		gamePlayers[1][emojiPlayerColors[0]].home.forEach( fieldPos => gameGrid[fieldPos] = emojiPlayerColors[0] );
 		gamePlayers[1][emojiPlayerColors[2]].home.forEach( fieldPos => gameGrid[fieldPos] = emojiPlayerColors[2] );
 		gamePlayers[1][emojiPlayerColors[4]].home.forEach( fieldPos => gameGrid[fieldPos] = emojiPlayerColors[4] );
-		let button = new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲');
-		let startingPlayer = `<@${player2}> (${emojiPlayerColors[2]})`;
-		if ( botPlayers.has(player2) ) startingPlayer = `<@${player3}> (${emojiPlayerColors[4]})`;
-		if ( botPlayers.has(player3) ) startingPlayer = `<@${player1}> (${emojiPlayerColors[0]})`;
-		if ( interaction.message.components[1] ) startingPlayer = `<@${player1}> (${emojiPlayerColors[0]})`;
-		if ( isGermanGuild(interaction) ) {
-			text += `\n${startingPlayer} ist am Zug.`;
-			button.setLabel('Würfel.');
-		}
-		else {
-			text += `\nIt's ${startingPlayer} turn.`;
-			button.setLabel('Roll the dice.');
-		}
-		let components = [new ActionRowBuilder().addComponents(button)];
-		if ( interaction.message.components[1] ) components.push(new ActionRowBuilder().addComponents(interaction.message.components[1].components[0]));
-		return interaction.update( {
-			content: text + '\n\n' + gameGrid.join(''),
-			allowedMentions: {users: [player1]},
-			components
-		} ).catch( error => console.log( '- ' + error ) );
+		let startingPlayer = `<@${currentPlayer}> `;
+		if ( currentPlayer === player1 ) startingPlayer += `(${emojiPlayerColors[0]})`;
+		else if ( currentPlayer === player2 ) startingPlayer += `(${emojiPlayerColors[2]})`;
+		else if ( currentPlayer === player3 ) startingPlayer += `(${emojiPlayerColors[3]})`;
+		text += getMessage(interaction.guild_locale, 'game_turn', startingPlayer);
+		let components = [ buildActionRow(
+			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die'))
+		) ];
+		if ( interaction.message.components[1] ) components.push( buildActionRow(
+			buildButton('dontgetangry_join', ButtonStyle.Success, '🆕', getMessage(interaction.guild_locale, 'dontgetangry_join'))
+		) );
+		return {
+			type: InteractionResponseType.UpdateMessage,
+			data: {
+				content: text + '\n\n' + gameGrid.join(''),
+				allowed_mentions: {
+					users: [currentPlayer]
+				},
+				components
+			}
+		};
 	}
-	if ( interaction.user.id !== currentPlayer ) {
-		return interaction.reply( {
-			content: ( isGermanInteraction(interaction) ? 'Du bist gerade nicht am Zug.' : 'It\'s not your turn right now.' ),
-			ephemeral: true
-		} ).catch( error => console.log( '- ' + error ) );
-	}
+	if ( botPlayers.has(interaction.user.id) ) return {
+		type: InteractionResponseType.ChannelMessageWithSource,
+		data: {
+			content: '🤖 ' + getMessage(interaction.locale, 'imabot_playing'),
+			components: [ buildActionRow(
+				buildButton('imabot', ButtonStyle.Success, '🤖', 'imabot')
+			) ],
+			flags: MessageFlags.Ephemeral,
+			allowed_mentions: {
+				parse: []
+			}
+		}
+	};
+	if ( interaction.user.id !== currentPlayer ) return {
+		type: InteractionResponseType.ChannelMessageWithSource,
+		data: {
+			content: getMessage(interaction.locale, 'error_not_your_turn'),
+			flags: MessageFlags.Ephemeral,
+			allowed_mentions: {
+				parse: []
+			}
+		}
+	};
+	if ( botPlayedGames.has(interaction.message.id) ) return {
+		type: InteractionResponseType.ChannelMessageWithSource,
+		data: {
+			content: '🤖 ' + getMessage(interaction.locale, 'imabot_wait'),
+			flags: MessageFlags.Ephemeral,
+			allowed_mentions: {
+				parse: []
+			}
+		}
+	};
+	if ( interaction.data.custom_id === 'dontgetangry_giveup' ) return {
+		type: InteractionResponseType.UpdateMessage,
+		data: {
+			components: [ buildActionRow(
+				buildButton('dontgetangry_giveup_yes', ButtonStyle.Danger, '☠️', getMessage(interaction.guild_locale, 'dontgetangry_giveup_yes')),
+				buildButton('dontgetangry_giveup_no', ButtonStyle.Success, '↪️', getMessage(interaction.guild_locale, 'dontgetangry_giveup_no'))
+			) ],
+			allowed_mentions: {
+				users: [currentPlayer]
+			}
+		}
+	};
+	if ( interaction.data.custom_id === 'dontgetangry_giveup_no' ) return {
+		type: InteractionResponseType.UpdateMessage,
+		data: {
+			components: [ buildActionRow(
+				buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die')),
+				buildButton('dontgetangry_giveup', ButtonStyle.Danger, '☠️', getMessage(interaction.guild_locale, 'dontgetangry_giveup'))
+			) ],
+			allowed_mentions: {
+				users: [currentPlayer]
+			}
+		}
+	};
 	let winnerText = '';
 	if ( interaction.message.content.split('\n\n').length === 3 ) winnerText = '\n\n' + interaction.message.content.split('\n\n')[1];
 	let gameGrid = [...interaction.message.content.replace( /\uFE0F\u20E3/g, '' ).split('\n').slice(-11).join('\n')];
@@ -419,44 +427,9 @@ function dontgetangry_button(interaction, ...[player1, player2, player3, player4
 		emoji: playerColor[5]
 	});
 	let gamePlayer = gamePlayers[isBig][playerColor[players.length]];
-	if ( interaction.customId === 'dontgetangry_giveup' ) {
-		let buttons = [
-			new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_giveup_yes').setEmoji('☠️'),
-			new ButtonBuilder().setStyle(ButtonStyle.Success).setCustomId('dontgetangry_giveup_no').setEmoji('↪️')
-		];
-		if ( isGermanGuild(interaction) ) {
-			buttons[0].setLabel('Aufgeben!');
-			buttons[1].setLabel('Nicht aufgeben!');
-		}
-		else {
-			buttons[0].setLabel('Give up!');
-			buttons[1].setLabel('Don\'t give up!');
-		}
-		return interaction.update( {
-			allowedMentions: {users: [currentPlayer]},
-			components: [new ActionRowBuilder().addComponents(...buttons)]
-		} ).catch( error => console.log( '- ' + error ) );
-	}
-	if ( interaction.customId === 'dontgetangry_giveup_no' ) {
-		let buttons = [
-			new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲'),
-			new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_giveup').setEmoji('☠️')
-		];
-		if ( isGermanGuild(interaction) ) {
-			buttons[0].setLabel('Würfel.');
-			buttons[1].setLabel('Aufgeben?');
-		}
-		else {
-			buttons[0].setLabel('Roll the dice.');
-			buttons[1].setLabel('Give up?');
-		}
-		return interaction.update( {
-			allowedMentions: {users: [currentPlayer]},
-			components: [new ActionRowBuilder().addComponents(...buttons)]
-		} ).catch( error => console.log( '- ' + error ) );
-	}
-	if ( interaction.customId === 'dontgetangry_giveup_yes' ) {
-		let text = '**Mensch ärgere Dich nicht**\n' + interaction.message.content.split('\n')[1].replace( `<@${currentPlayer}> (${gamePlayer.emoji})`, `~~*<@${currentPlayer}>* (${gamePlayer.emoji})~~` );
+	if ( interaction.data.custom_id === 'dontgetangry_giveup_yes' ) {
+		let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
+		text += interaction.message.content.split('\n')[1].replace( `<@${currentPlayer}> (${gamePlayer.emoji})`, `~~*<@${currentPlayer}>* (${gamePlayer.emoji})~~` );
 		while ( gameGrid.includes( gamePlayer.emoji ) ) {
 			let i = gameGrid.indexOf(gamePlayer.emoji);
 			gameGrid[i] = gameBoard[isBig][i];
@@ -465,66 +438,64 @@ function dontgetangry_button(interaction, ...[player1, player2, player3, player4
 		let activePlayers = players.filter( player => !gamePlayers[isBig][player.emoji].target.every( targetPos => {
 			return ( gameGrid[targetPos] !== gameBoard[isBig][targetPos] );
 		} ) );
-		let isCPU = false;
-		let allowedMentions = {parse: []};
-		let components = [];
+		if ( activePlayers.length < 2 || activePlayers.every( player => botPlayers.has(player.id) ) ) return {
+			type: InteractionResponseType.UpdateMessage,
+			data: {
+				content: text + winnerText + '\n\n' + gameGrid.join(''),
+				components: [],
+				allowed_mentions: {
+					parse: []
+				}
+			}
+		};
 		let nextPlayer = players.find( player => player.emoji === gamePlayer.emoji );
-		if ( activePlayers.length < 2 || activePlayers.every( player => botPlayers.has(player.id) ) ) {
-			if ( interaction.channelId === '878593019119546379' && interaction.message.hasThread ) {
-				interaction.message.thread?.setAutoArchiveDuration?.(ThreadAutoArchiveDuration.OneHour, 'Spiel ist zuende.').catch( error => console.log( '- ' + error ) );
-			}
-		}
-		else {
-			let i = 0;
+		let i = 0;
+		nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
+		while ( gamePlayers[isBig][nextPlayer.emoji].target.every( targetPos => gameGrid[targetPos] === nextPlayer.emoji ) ) {
 			nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
-			while ( gamePlayers[isBig][nextPlayer.emoji].target.every( targetPos => gameGrid[targetPos] === nextPlayer.emoji ) ) {
-				nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
-				if ( i++ > 6 ) break;
-			}
-			isCPU = botPlayers.has(nextPlayer.id);
-			allowedMentions = {users: [nextPlayer.id]};
-			let buttons = [
-				new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲'),
-				new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_giveup').setEmoji('☠️')
-			];
-			if ( isGermanGuild(interaction) ) {
-				text += `\n${( isCPU ? '🤖 ' : '' )}<@${nextPlayer.id}> (${nextPlayer.emoji}) ist am Zug.`;
-				buttons[0].setLabel('Würfel.');
-				buttons[1].setLabel('Aufgeben?');
-			}
-			else {
-				text += `\nIt's ${( isCPU ? '🤖 ' : '' )}<@${nextPlayer.id}> (${nextPlayer.emoji}) turn.`;
-				buttons[0].setLabel('Roll the dice.');
-				buttons[1].setLabel('Give up?');
-			}
-			if ( isCPU ) {
-				buttons.pop();
-				botPlayedGames.add(interaction.message.id);
-			}
-			components.push(new ActionRowBuilder().addComponents(...buttons));
+			if ( i++ > 6 ) break;
 		}
-		return interaction.update( {
-			content: text + winnerText + '\n\n' + gameGrid.join(''),
-			allowedMentions, components,
-			fetchReply: isCPU && components.length
-		} ).then( msg => {
-			if ( isCPU && components.length ) {
-				if ( msg ) interaction.message = msg;
-				let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
-				setTimeout( dontgetangry_rollDice, 3000, interaction, gameGrid, isBig, nextGamePlayer, players, nextPlayer.id, winnerText );
+		let isCPU = botPlayers.has(nextPlayer.id);
+		text += '\n' + getMessage(interaction.guild_locale, 'game_turn', ( isCPU ? '🤖 ' : '' ) + `<@${nextPlayer.id}> (${nextPlayer.emoji})`);
+		if ( isCPU ) {
+			botPlayedGames.add(interaction.message.id);
+			let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
+			dontgetangry_next( dontgetangry_rollDice, interaction, gameGrid.slice(), isBig, 0, nextGamePlayer, players, nextPlayer.id, winnerText );
+		}
+		return {
+			type: InteractionResponseType.UpdateMessage,
+			data: {
+				content: text + winnerText + '\n\n' + gameGrid.join(''),
+				components: [ buildActionRow(
+					buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die')),
+					( isCPU ? null : buildButton('dontgetangry_giveup', ButtonStyle.Danger, '☠️', getMessage(interaction.guild_locale, 'dontgetangry_giveup')) )
+				) ],
+				allowed_mentions: {
+					users: [nextPlayer.id]
+				}
 			}
-		}, error => console.log( '- ' + error ) );
+		};
 	}
-	if ( interaction.customId === 'dontgetangry_die' ) return dontgetangry_rollDice(interaction, gameGrid, isBig, gamePlayer, players, currentPlayer, winnerText);
-	let fieldClicked = +interaction.customId.replace( 'dontgetangry_', '' );
+	if ( interaction.data.custom_id === 'dontgetangry_die' ) {
+		let currentTry = +( interaction.message.content.match(/\*\*([1-3])(\.|st|nd|rd)\*\*/)?.[1] || 0 );
+		return {
+			type: InteractionResponseType.UpdateMessage,
+			data: dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePlayer, players, currentPlayer, winnerText)
+		};
+	}
+	let fieldClicked = +interaction.data.custom_id.replace( 'dontgetangry_', '' );
 	let numberRolled = +interaction.message.content.match(/\*\*([1-6])\*\*/)[1];
-	return dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText);
+	return {
+		type: InteractionResponseType.UpdateMessage,
+		data: dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText)
+	};
 }
 
 /**
- * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
  * @param {String[]} gameGrid
  * @param {0|1} isBig
+ * @param {Number} currentTry
  * @param {gamePlayer} gamePlayer
  * @param {Object[]} players
  * @param {Number} players.index
@@ -532,29 +503,25 @@ function dontgetangry_button(interaction, ...[player1, player2, player3, player4
  * @param {emojiPlayerColor} players.emoji
  * @param {String} currentPlayer
  * @param {String} winnerText
+ * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
  */
-function dontgetangry_rollDice(interaction, gameGrid, isBig, gamePlayer, players, currentPlayer, winnerText = '') {
+function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePlayer, players, currentPlayer, winnerText = '') {
 	let isCPU = botPlayers.has(currentPlayer);
 	if ( isCPU ) botPlayedGames.add(interaction.message.id);
 	let numberRolled = Math.floor(Math.random() * 6) + 1;
-	let text = '**Mensch ärgere Dich nicht**\n' + interaction.message.content.split('\n')[1];
-	/** @type {ButtonBuilder[]} */
+	let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
+	text += interaction.message.content.split('\n')[1];
+	/** @type {import('discord-api-types/v10').APIActionRowComponent<import('discord-api-types/v10').APIButtonComponentWithCustomId>[]} */
 	let components = [];
-	let currentTry = 0;
 	let inHome = gamePlayer.home.filter( fieldPos => gameGrid[fieldPos] === gamePlayer.emoji ).length;
 	let inTarget = +( gameGrid[gamePlayer.target[3]] === gamePlayer.emoji );
 	if ( inTarget ) inTarget += +( gameGrid[gamePlayer.target[2]] === gamePlayer.emoji );
 	if ( inTarget === 2 ) inTarget += +( gameGrid[gamePlayer.target[1]] === gamePlayer.emoji );
-	if ( ( inHome + inTarget ) === 4 ) {
-		currentTry = +( interaction.message.content.match(/\*\*#?((?<=#)[1-3]|[1-3](?=\.))\.?\*\*/)?.[1] || 0 ) + 1;
-	}
+	if ( ( inHome + inTarget ) === 4 ) currentTry++;
 	let fieldClickedCPU = -1;
-	if ( currentTry && numberRolled !== 6 ) {
-		components.push(new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲'));
-		if ( isGermanGuild(interaction) ) components[0].setLabel('Würfel.');
-		else components[0].setLabel('Roll the dice.');
-		if ( currentTry >= 3 ) components[0].setDisabled();
-	}
+	if ( currentTry && numberRolled !== 6 ) components.push( buildActionRow(
+		buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die'), currentTry >= 3)
+	) );
 	else {
 		/** @type {{pos: Number, disabled: Boolean, scoreCPU: Number}[]} */
 		let playerPos = [];
@@ -641,10 +608,10 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, gamePlayer, players
 				}
 			}
 		} );
-		components.push(...playerPos.map( (posInfo, i) => {
+		components.push( buildActionRow( ...playerPos.map( (posInfo, i) => {
 			gameGrid[posInfo.pos] = emojiNumberList[i];
-			return new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_' + i).setEmoji(emojiNumberList[i]).setDisabled(posInfo.disabled);
-		} ));
+			return buildButton('dontgetangry_' + i, ButtonStyle.Primary, emojiNumberList[i], null, posInfo.disabled);
+		} ) ) );
 		if ( isCPU ) {
 			let playerPosCPU = playerPos.map( ({disabled, scoreCPU}, i) => {
 				return {disabled, scoreCPU, index: i};
@@ -661,104 +628,33 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, gamePlayer, players
 			} )[0]?.index;
 		}
 	}
-	if ( isGermanGuild(interaction) ) {
-		text += `\n${( isCPU ? '🤖 ' : '' )}<@${currentPlayer}> (${gamePlayer.emoji}) ist am Zug und hat eine **${numberRolled}** gewürfelt.`;
-		if ( currentTry ) text += ` Dies war der **${currentTry}.** Versuch.`;
+	text += getMessage(interaction.guild_locale, 'dontgetangry_roll', ( isCPU ? '🤖 ' : '' ) + `<@${currentPlayer}> (${gamePlayer.emoji})`, `**${numberRolled}**`);
+	if ( currentTry ) {
+		if ( interaction.guild_locale === 'de' ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}.**`);
+		else if ( currentTry === 1 ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}st**`);
+		else if ( currentTry === 2 ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}nd**`);
+		else if ( currentTry === 3 ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}rd**`);
+		else text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}.**`);
 	}
-	else {
-		text += `\nIt's ${( isCPU ? '🤖 ' : '' )}<@${currentPlayer}> (${gamePlayer.emoji}) turn and they rolled a **${numberRolled}**.`;
-		if ( currentTry ) text += ` This was their **#${currentTry}** try.`;
+	if ( components.every( component => component.disabled ) ) {
+		dontgetangry_next( dontgetangry_moveBlocked, interaction, gameGrid.slice(), isBig, numberRolled, currentTry, gamePlayer, players, currentPlayer, winnerText );
 	}
-	let message = {
+	else if ( isCPU ) {
+		if ( fieldClickedCPU === -1 ) dontgetangry_next( dontgetangry_rollDice, interaction, gameGrid.slice(), isBig, currentTry, gamePlayer, players, currentPlayer, winnerText );
+		else dontgetangry_next( dontgetangry_movePiece, interaction, gameGrid.slice(), isBig, fieldClickedCPU, numberRolled, gamePlayer, players, currentPlayer, winnerText );
+	}
+	else botPlayedGames.delete(interaction.message.id);
+	return {
 		content: text + winnerText + '\n\n' + gameGrid.join(''),
-		allowedMentions: {
+		allowed_mentions: {
 			users: [currentPlayer]
 		},
-		components: [new ActionRowBuilder().addComponents(...components)],
-		fetchReply: isCPU || components.every( component => component.data.disabled )
+		components
 	};
-	return ( interaction.replied ? interaction.editReply( message ) : interaction.update( message ) ).then( msg => {
-		if ( components.every( component => component.data.disabled ) ) {
-			if ( msg ) interaction.message = msg;
-			let newText = '**Mensch ärgere Dich nicht**\n' + interaction.message.content.split('\n')[1];
-			let components = [new ActionRowBuilder()];
-			let buttons = [
-				new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲')
-			];
-			let allowedMentions = {users: []};
-			let nextPlayer = players.find( player => player.emoji === gamePlayer.emoji );
-			if ( numberRolled === 6 ) {
-				allowedMentions.users.push(currentPlayer);
-				if ( isGermanGuild(interaction) ) {
-					newText += `\n${( isCPU ? '🤖 ' : '' )}<@${currentPlayer}> (${gamePlayer.emoji}) ist immer noch am Zug.`;
-					buttons[0].setLabel('Würfel.');
-				}
-				else {
-					newText += `\nIt's still ${( isCPU ? '🤖 ' : '' )}<@${currentPlayer}> (${gamePlayer.emoji}) turn.`;
-					buttons[0].setLabel('Roll the dice.');
-				}
-			}
-			else if ( players.filter( player => !gamePlayers[isBig][player.emoji].target.every( targetPos => {
-				return ( gameGrid[targetPos] !== gameBoard[isBig][targetPos] && gameGrid[targetPos] !== emojiLastMove );
-			} ) ).every( player => botPlayers.has(player.id) ) ) {
-				components = [];
-				gameGrid[gameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][gameGrid.indexOf(emojiLastMove)];
-				if ( interaction.channelId === '878593019119546379' && interaction.message.hasThread ) {
-					interaction.message.thread?.setAutoArchiveDuration(ThreadAutoArchiveDuration.OneHour, 'Spiel ist zuende.').catch( error => console.log( '- ' + error ) );
-				}
-			}
-			else {
-				let i = 0;
-				nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
-				while ( gamePlayers[isBig][nextPlayer.emoji].target.every( targetPos => gameGrid[targetPos] === nextPlayer.emoji ) ) {
-					nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
-					if ( i++ > 6 ) break;
-				}
-				isCPU = botPlayers.has(nextPlayer.id);
-				allowedMentions.users.push(nextPlayer.id);
-				buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_giveup').setEmoji('☠️'));
-				if ( isGermanGuild(interaction) ) {
-					newText += `\n${( isCPU ? '🤖 ' : '' )}<@${nextPlayer.id}> (${nextPlayer.emoji}) ist am Zug.`;
-					buttons[0].setLabel('Würfel.');
-					buttons[1].setLabel('Aufgeben?');
-				}
-				else {
-					newText += `\nIt's ${( isCPU ? '🤖 ' : '' )}<@${nextPlayer.id}> (${nextPlayer.emoji}) turn.`;
-					buttons[0].setLabel('Roll the dice.');
-					buttons[1].setLabel('Give up?');
-				}
-				if ( isCPU ) {
-					buttons.pop();
-					botPlayedGames.add(interaction.message.id);
-				}
-			}
-			if ( components.length ) components[0].addComponents(...buttons);
-			setTimeout( message2 => {
-				return interaction.editReply( message2 ).then( msg2 => {
-					if ( isCPU && components.length ) {
-						if ( msg2 ) interaction.message = msg2;
-						let nextGameGrid = [...gameGrid.join('').replace( /1️⃣|2️⃣|3️⃣|4️⃣/g, gamePlayer.emoji )];
-						let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
-						setTimeout( dontgetangry_rollDice, 3000, interaction, nextGameGrid, isBig, nextGamePlayer, players, nextPlayer.id, winnerText );
-					}
-					else botPlayedGames.delete(interaction.message.id);
-				}, error => console.log( '- ' + error ) );
-			}, 3000, {
-				content: newText + winnerText + '\n\n' + gameGrid.join('').replace( /1️⃣|2️⃣|3️⃣|4️⃣/g, gamePlayer.emoji ),
-				allowedMentions, components
-			} );
-		}
-		else if ( isCPU ) {
-			if ( msg ) interaction.message = msg;
-			if ( fieldClickedCPU === -1 ) setTimeout( dontgetangry_rollDice, 3000, interaction, gameGrid, isBig, gamePlayer, players, currentPlayer, winnerText );
-			else setTimeout( dontgetangry_movePiece, 3000, interaction, gameGrid, isBig, fieldClickedCPU, numberRolled, gamePlayer, players, currentPlayer, winnerText );
-		}
-		else botPlayedGames.delete(interaction.message.id);
-	}, error => console.log( '- ' + error ) );
 }
 
 /**
- * @param {import('discord.js').ButtonInteraction} interaction
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
  * @param {String[]} gameGrid
  * @param {0|1} isBig
  * @param {Number} fieldClicked
@@ -770,18 +666,23 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, gamePlayer, players
  * @param {emojiPlayerColor} players.emoji
  * @param {String} currentPlayer
  * @param {String} winnerText
+ * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
  */
 function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText = '') {
 	let isCPU = botPlayers.has(currentPlayer);
 	if ( isCPU ) botPlayedGames.add(interaction.message.id);
-	let text = '**Mensch ärgere Dich nicht**\n' + interaction.message.content.split('\n')[1];
-	let allowedMentions = {parse: []};
+	let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
+	text += interaction.message.content.split('\n')[1];
+	/** @type {import('discord-api-types/v10').APIAllowedMentions} */
+	let allowed_mentions = {parse: []};
+	/** @type {import('discord-api-types/v10').APIActionRowComponent<import('discord-api-types/v10').APIButtonComponentWithCustomId>[]} */
 	let components = [];
 	if ( numberRolled === 6 && gamePlayer.home.some( fieldPos => gameGrid[fieldPos] === emojiNumberList[fieldClicked] ) ) {
 		let newPos = gamePlayer.path[0];
 		if ( gameGrid[newPos] !== gameBoard[isBig][newPos] ) {
 			let kickedPos = gamePlayers[isBig][gameGrid[newPos]].home.find( fieldPos => gameGrid[fieldPos] === gameBoard[isBig][fieldPos] );
 			gameGrid[kickedPos] = gameGrid[newPos];
+			/*
 			let kickedPlayer = players.find( player => player.emoji === gameGrid[newPos] )?.id;
 			if ( interaction.guild?.members?.cache.has(kickedPlayer) ) {
 				text = text.replace( '**Mensch ', '**' + interaction.guild.members.cache.get(kickedPlayer).displayName.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
@@ -789,6 +690,7 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 			else if ( interaction.client.users.cache.has(kickedPlayer) ) {
 				text = text.replace( '**Mensch ', '**' + interaction.client.users.cache.get(kickedPlayer).username.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
 			}
+			*/
 		}
 		let curPos = gamePlayer.home.find( fieldPos => gameGrid[fieldPos] === emojiNumberList[fieldClicked] );
 		gameGrid[curPos] = emojiLastMove;
@@ -800,6 +702,7 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 		if ( gameGrid[newPos] !== gameBoard[isBig][newPos] ) {
 			let kickedPos = gamePlayers[isBig][gameGrid[newPos]].home.find( fieldPos => gameGrid[fieldPos] === gameBoard[isBig][fieldPos] );
 			gameGrid[kickedPos] = gameGrid[newPos];
+			/*
 			let kickedPlayer = players.find( player => player.emoji === gameGrid[newPos] )?.id;
 			if ( interaction.guild?.members?.cache.has(kickedPlayer) ) {
 				text = text.replace( '**Mensch ', '**' + interaction.guild.members.cache.get(kickedPlayer).displayName.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
@@ -807,6 +710,7 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 			else if ( interaction.client.users.cache.has(kickedPlayer) ) {
 				text = text.replace( '**Mensch ', '**' + interaction.client.users.cache.get(kickedPlayer).username.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
 			}
+			*/
 		}
 		gameGrid[curPos] = emojiLastMove;
 		gameGrid[newPos] = gamePlayer.emoji;
@@ -821,33 +725,21 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 		if ( activePlayers.length < 2 || activePlayers.every( player => botPlayers.has(player.id) ) ) {
 			moveTurn = false;
 			gameGrid[gameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][gameGrid.indexOf(emojiLastMove)];
-			if ( interaction.channelId === '878593019119546379' && interaction.message.hasThread ) {
-				interaction.message.thread?.setAutoArchiveDuration(ThreadAutoArchiveDuration.OneHour, 'Spiel ist zuende.').catch( error => console.log( '- ' + error ) );
-			}
 		}
 	}
 	else if ( numberRolled === 6 ) {
 		moveTurn = false;
-		allowedMentions = {users: [currentPlayer]};
-		let button = new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲');
-		if ( isGermanGuild(interaction) ) {
-			text += `\n${( isCPU ? '🤖 ' : '' )}<@${currentPlayer}> (${gamePlayer.emoji}) ist immer noch am Zug.`;
-			button.setLabel('Würfel.');
-		}
-		else {
-			text += `\nIt's still ${( isCPU ? '🤖 ' : '' )}<@${currentPlayer}> (${gamePlayer.emoji}) turn.`;
-			button.setLabel('Roll the dice.');
-		}
-		components.push(new ActionRowBuilder().addComponents(button));
+		allowed_mentions.users = [currentPlayer];
+		text += '\n' + getMessage(interaction.guild_locale, 'dontgetangry_turn', ( isCPU ? '🤖 ' : '' ) + `<@${currentPlayer}> (${gamePlayer.emoji})`);
+		components.push( buildActionRow(
+			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die'))
+		) );
 	}
 	else if ( players.filter( player => !gamePlayers[isBig][player.emoji].target.every( targetPos => {
 		return ( gameGrid[targetPos] !== gameBoard[isBig][targetPos] && gameGrid[targetPos] !== emojiLastMove );
 	} ) ).every( player => botPlayers.has(player.id) ) ) {
 		moveTurn = false;
 		gameGrid[gameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][gameGrid.indexOf(emojiLastMove)];
-		if ( interaction.channelId === '878593019119546379' && interaction.message.hasThread ) {
-			interaction.message.thread?.setAutoArchiveDuration(ThreadAutoArchiveDuration.OneHour, 'Spiel ist zuende.').catch( error => console.log( '- ' + error ) );
-		}
 	}
 	let nextPlayer = players.find( player => player.emoji === gamePlayer.emoji );
 	if ( moveTurn ) {
@@ -858,42 +750,118 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 			if ( i++ > 6 ) break;
 		}
 		isCPU = botPlayers.has(nextPlayer.id);
-		allowedMentions = {users: [nextPlayer.id]};
-		let buttons = [
-			new ButtonBuilder().setStyle(ButtonStyle.Primary).setCustomId('dontgetangry_die').setEmoji('🎲'),
-			new ButtonBuilder().setStyle(ButtonStyle.Danger).setCustomId('dontgetangry_giveup').setEmoji('☠️')
-		];
-		if ( isGermanGuild(interaction) ) {
-			text += `\n${( isCPU ? '🤖 ' : '' )}<@${nextPlayer.id}> (${nextPlayer.emoji}) ist am Zug.`;
-			buttons[0].setLabel('Würfel.');
-			buttons[1].setLabel('Aufgeben?');
-		}
-		else {
-			text += `\nIt's ${( isCPU ? '🤖 ' : '' )}<@${nextPlayer.id}> (${nextPlayer.emoji}) turn.`;
-			buttons[0].setLabel('Roll the dice.');
-			buttons[1].setLabel('Give up?');
-		}
-		if ( isCPU ) {
-			buttons.pop();
-			botPlayedGames.add(interaction.message.id);
-		}
-		components.push(new ActionRowBuilder().addComponents(...buttons));
+		allowed_mentions.users = [nextPlayer.id];
+		text += '\n' + getMessage(interaction.guild_locale, 'game_turn', ( isCPU ? '🤖 ' : '' ) + `<@${nextPlayer.id}> (${nextPlayer.emoji})`);
+		components.push( buildActionRow(
+			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die')),
+			( isCPU ? null : buildButton('dontgetangry_giveup', ButtonStyle.Danger, '☠️', getMessage(interaction.guild_locale, 'dontgetangry_giveup')) )
+		) );
+		if ( isCPU ) botPlayedGames.add(interaction.message.id);
 	}
-	let message = {
-		content: text + winnerText + '\n\n' + gameGrid.join('').replace( /1️⃣|2️⃣|3️⃣|4️⃣/g, gamePlayer.emoji ),
-		allowedMentions, components,
-		fetchReply: isCPU && components.length
+	if ( gameGrid.includes( emojiNumberList[0] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[0])] = gamePlayer.emoji;
+	if ( gameGrid.includes( emojiNumberList[1] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[1])] = gamePlayer.emoji;
+	if ( gameGrid.includes( emojiNumberList[2] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[2])] = gamePlayer.emoji;
+	if ( gameGrid.includes( emojiNumberList[3] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[3])] = gamePlayer.emoji;
+	if ( isCPU && components.length ) {
+		let nextGameGrid = gameGrid.slice();
+		if ( nextGameGrid.includes( emojiLastMove ) ) nextGameGrid[nextGameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][nextGameGrid.indexOf(emojiLastMove)];
+		let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
+		dontgetangry_next( dontgetangry_rollDice, interaction, nextGameGrid, isBig, 0, nextGamePlayer, players, nextPlayer.id, winnerText );
+	}
+	else botPlayedGames.delete(interaction.message.id);
+	return {
+		content: text + winnerText + '\n\n' + gameGrid.join(''),
+		components, allowed_mentions
 	};
-	return ( interaction.replied ? interaction.editReply( message ) : interaction.update( message ) ).then( msg => {
-		if ( isCPU && components.length ) {
-			if ( msg ) interaction.message = msg;
-			let nextGameGrid = [...gameGrid.join('').replace( /1️⃣|2️⃣|3️⃣|4️⃣/g, gamePlayer.emoji )];
-			if ( nextGameGrid.includes( emojiLastMove ) ) nextGameGrid[nextGameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][nextGameGrid.indexOf(emojiLastMove)];
-			let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
-			setTimeout( dontgetangry_rollDice, 3000, interaction, nextGameGrid, isBig, nextGamePlayer, players, nextPlayer.id, winnerText );
+}
+
+/**
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
+ * @param {String[]} gameGrid
+ * @param {0|1} isBig
+ * @param {Number} numberRolled
+ * @param {Number} currentTry
+ * @param {gamePlayer} gamePlayer
+ * @param {Object[]} players
+ * @param {Number} players.index
+ * @param {String} players.id
+ * @param {emojiPlayerColor} players.emoji
+ * @param {String} currentPlayer
+ * @param {String} winnerText
+ * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
+ */
+function dontgetangry_moveBlocked(interaction, gameGrid, isBig, numberRolled, currentTry, gamePlayer, players, currentPlayer, winnerText = '') {
+	let isCPU = botPlayers.has(currentPlayer);
+	if ( isCPU ) botPlayedGames.add(interaction.message.id);
+	let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
+	text += interaction.message.content.split('\n')[1];
+	/** @type {import('discord-api-types/v10').APIAllowedMentions} */
+	let allowed_mentions = {parse: []};
+	/** @type {import('discord-api-types/v10').APIActionRowComponent<import('discord-api-types/v10').APIButtonComponentWithCustomId>[]} */
+	let components = [];
+	let nextPlayer = players.find( player => player.emoji === gamePlayer.emoji );
+	if ( numberRolled === 6 ) {
+		allowed_mentions.users = [currentPlayer];
+		text += '\n' + getMessage(interaction.guild_locale, 'dontgetangry_turn', ( isCPU ? '🤖 ' : '' ) + `<@${currentPlayer}> (${gamePlayer.emoji})`);
+		components.push( buildActionRow(
+			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die'))
+		) );
+	}
+	else if ( players.filter( player => !gamePlayers[isBig][player.emoji].target.every( targetPos => {
+		return ( gameGrid[targetPos] !== gameBoard[isBig][targetPos] && gameGrid[targetPos] !== emojiLastMove );
+	} ) ).every( player => botPlayers.has(player.id) ) ) {
+		components = [];
+		gameGrid[gameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][gameGrid.indexOf(emojiLastMove)];
+	}
+	else {
+		let i = 0;
+		nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
+		while ( gamePlayers[isBig][nextPlayer.emoji].target.every( targetPos => gameGrid[targetPos] === nextPlayer.emoji ) ) {
+			nextPlayer = ( players[nextPlayer.index + 1] || players[0] );
+			if ( i++ > 6 ) break;
 		}
-		else botPlayedGames.delete(interaction.message.id);
-	}, error => console.log( '- ' + error ) );
+		isCPU = botPlayers.has(nextPlayer.id);
+		allowed_mentions.users = [nextPlayer.id];
+		text += '\n' + getMessage(interaction.guild_locale, 'game_turn', ( isCPU ? '🤖 ' : '' ) + `<@${nextPlayer.id}> (${nextPlayer.emoji})`);
+		components.push( buildActionRow(
+			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die')),
+			( isCPU ? null : buildButton('dontgetangry_giveup', ButtonStyle.Danger, '☠️', getMessage(interaction.guild_locale, 'dontgetangry_giveup')) )
+		) );
+		if ( isCPU ) botPlayedGames.add(interaction.message.id);
+	}
+	if ( gameGrid.includes( emojiNumberList[0] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[0])] = gamePlayer.emoji;
+	if ( gameGrid.includes( emojiNumberList[1] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[1])] = gamePlayer.emoji;
+	if ( gameGrid.includes( emojiNumberList[2] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[2])] = gamePlayer.emoji;
+	if ( gameGrid.includes( emojiNumberList[3] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[3])] = gamePlayer.emoji;
+	if ( isCPU && components.length ) {
+		let nextGameGrid = gameGrid.slice();
+		if ( nextGameGrid.includes( emojiLastMove ) ) nextGameGrid[nextGameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][nextGameGrid.indexOf(emojiLastMove)];
+		let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
+		dontgetangry_next( dontgetangry_rollDice, interaction, nextGameGrid, isBig, currentTry, nextGamePlayer, players, nextPlayer.id, winnerText );
+	}
+	else botPlayedGames.delete(interaction.message.id);
+	return {
+		content: text + winnerText + '\n\n' + gameGrid.join(''),
+		components, allowed_mentions
+	}
+}
+
+/**
+ * @callback dontgetangryFunction
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
+ * @param {...any} args
+ * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
+ */
+
+/**
+ * @param {dontgetangryFunction} nextFunction 
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction 
+ * @param {...any} args 
+ */
+function dontgetangry_next(nextFunction, interaction, ...args) {
+	setTimeout( () => {
+		updateMessage(interaction, nextFunction(interaction, ...args));
+	}, 3000);
 }
 
 export default {
