@@ -627,7 +627,7 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePla
 			} )[0]?.index;
 		}
 	}
-	text += getMessage(interaction.guild_locale, 'dontgetangry_roll', ( isCPU ? '🤖 ' : '' ) + `<@${currentPlayer}> (${gamePlayer.emoji})`, `**${numberRolled}**`);
+	text += '\n' + getMessage(interaction.guild_locale, 'dontgetangry_roll', ( isCPU ? '🤖 ' : '' ) + `<@${currentPlayer}> (${gamePlayer.emoji})`, `**${numberRolled}**`);
 	if ( currentTry ) {
 		if ( interaction.guild_locale === 'de' ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}.**`);
 		else if ( currentTry === 1 ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}st**`);
