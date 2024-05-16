@@ -366,7 +366,7 @@ function dontgetangry_button(interaction, [player1, player2, player3, player4, p
 		data: {
 			content: '🤖 ' + getMessage(interaction.locale, 'imabot_playing'),
 			components: [ buildActionRow(
-				buildButton('imabot', ButtonStyle.Success, '🤖', 'imabot')
+				buildButton('imabot', ButtonStyle.Success, '🤖', getMessage(interaction.locale, 'imabot'))
 			) ],
 			flags: MessageFlags.Ephemeral,
 			allowed_mentions: {

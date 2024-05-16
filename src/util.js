@@ -72,7 +72,7 @@ export function updateApplicationCommand(commandName, guildId) {
 	} ).then( response => {
 		return response.body;
 	}, error => {
-		console.log( `- Error while responding to the interaction: ${error}` );
+		console.log( `- Error while updating the application command: ${error}` );
 	} );
 }
 

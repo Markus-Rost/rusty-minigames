@@ -132,7 +132,7 @@ function interactionCreate(interaction) {
 						result.data.content += getMessage(interaction.locale, 'imabot_supported') + '\n';
 						result.data.content += '- ' + getMessage(interaction.locale, 'dontgetangry');
 						result.data.components = [ buildActionRow(
-							buildButton('imabot', ButtonStyle.Success, '🤖', 'imabot')
+							buildButton('imabot', ButtonStyle.Success, '🤖', getMessage(interaction.locale, 'imabot'))
 						) ];
 					}
 					break;
