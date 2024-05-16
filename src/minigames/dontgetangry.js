@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType, ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
-import { emojiNumberList, emojiMedalList, botPlayers, botPlayedGames, getCommandOption, getCommandUserOption, getMessage, buildActionRow, buildButton, updateMessage } from '../util.js';
+import { emojiNumberList, emojiMedalList, botPlayers, botPlayedGames, getCommandOption, getCommandUserOption, getMessage, buildActionRow, buildButton, updateMessage, escapeFormatting } from '../util.js';
 
 // /eval code:updateApplicationCommand('dontgetangry')
 
@@ -135,7 +135,20 @@ const gamePlayers = [
 	}
 ];
 
-const usernameCache = new Map();
+/**
+ * @typedef cachedUsername
+ * @property {String} username
+ * @property {Map<String, String>} guilds
+ */
+
+/** @type {Map<String, cachedUsername>} */
+const usernameCache = new Map([
+	['1239601207694331914', {username: 'Rusty Minigames', guilds: new Map()}],
+	['809717142983147552', {username: 'Rostiger Bot', guilds: new Map()}],
+	['461189216198590464', {username: 'Wiki-Bot', guilds: new Map()}],
+	['432468082175246351', {username: 'Wiki-Bot (Test)', guilds: new Map()}],
+	['483003112831975424', {username: 'Curious Chicken', guilds: new Map()}],
+]);
 
 /**
  * @param {import('discord-api-types/v10').APIChatInputApplicationCommandInteraction} interaction
@@ -151,6 +164,15 @@ function dontgetangry_slash(interaction) {
 		getCommandUserOption(interaction, 'player5'),
 		getCommandUserOption(interaction, 'player6')
 	].filter( playerUser => playerUser && ( !playerUser.bot || botPlayers.has(playerUser.id) ) ).map( playerUser => {
+		/** @type {cachedUsername} */
+		let cachedName = {guilds: new Map()};
+		if ( usernameCache.has(playerUser.id) ) cachedName = usernameCache.get(playerUser.id);
+		else usernameCache.set(playerUser.id, cachedName);
+		cachedName.username = playerUser.global_name || playerUser.username;
+		if ( interaction.guild_id ) {
+			let member = interaction.data.resolved?.members?.[playerUser.id];
+			if ( member ) cachedName.guilds.set(interaction.guild_id, member.nick || cachedName.username);
+		}
 		return {
 			id: playerUser.id,
 			color: null
@@ -239,6 +261,12 @@ function dontgetangry_join(interaction, ...playerList) {
 			}
 		}
 	};
+	/** @type {cachedUsername} */
+	let cachedName = {guilds: new Map()};
+	if ( usernameCache.has(interaction.user.id) ) cachedName = usernameCache.get(interaction.user.id);
+	else usernameCache.set(interaction.user.id, cachedName);
+	cachedName.username = interaction.user.global_name || interaction.user.username;
+	if ( interaction.guild_id && interaction.member ) cachedName.guilds.set(interaction.guild_id, interaction.member.nick || cachedName.username);
 	if ( !isBig && playerList.length >= 4 ) {
 		isBig = 1;
 		gameGrid = gameBoard[isBig].slice();
@@ -280,6 +308,12 @@ function dontgetangry_join(interaction, ...playerList) {
  * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
 function dontgetangry_button(interaction, [player1, player2, player3, player4, player5, player6, currentPlayer]) {
+	/** @type {cachedUsername} */
+	let cachedName = {guilds: new Map()};
+	if ( usernameCache.has(interaction.user.id) ) cachedName = usernameCache.get(interaction.user.id);
+	else usernameCache.set(interaction.user.id, cachedName);
+	cachedName.username = interaction.user.global_name || interaction.user.username;
+	if ( interaction.guild_id && interaction.member ) cachedName.guilds.set(interaction.guild_id, interaction.member.nick || cachedName.username);
 	if ( !currentPlayer ) {
 		if ( player6 ) {
 			currentPlayer = player6;
@@ -672,8 +706,7 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePla
 function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText = '') {
 	let isCPU = botPlayers.has(currentPlayer);
 	if ( isCPU ) botPlayedGames.add(interaction.message.id);
-	let text = '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
-	text += interaction.message.content.split('\n')[1];
+	let text = '';
 	/** @type {import('discord-api-types/v10').APIAllowedMentions} */
 	let allowed_mentions = {parse: []};
 	/** @type {import('discord-api-types/v10').APIActionRowComponent<import('discord-api-types/v10').APIButtonComponentWithCustomId>[]} */
@@ -683,15 +716,15 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 		if ( gameGrid[newPos] !== gameBoard[isBig][newPos] ) {
 			let kickedPos = gamePlayers[isBig][gameGrid[newPos]].home.find( fieldPos => gameGrid[fieldPos] === gameBoard[isBig][fieldPos] );
 			gameGrid[kickedPos] = gameGrid[newPos];
-			/*
 			let kickedPlayer = players.find( player => player.emoji === gameGrid[newPos] )?.id;
-			if ( interaction.guild?.members?.cache.has(kickedPlayer) ) {
-				text = text.replace( '**Mensch ', '**' + interaction.guild.members.cache.get(kickedPlayer).displayName.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
+			if ( usernameCache.has(kickedPlayer) ) {
+				let cachedName = usernameCache.get(kickedPlayer);
+				if ( cachedName.guilds.has(interaction.guild_id) ) {
+					let guildUsername = cachedName.guilds.get(interaction.guild_id);
+					text += '**' + getMessage(interaction.guild_locale, 'dontgetangry_kicked', escapeFormatting(guildUsername)) + '**\n';
+				}
+				else text += '**' + getMessage(interaction.guild_locale, 'dontgetangry_kicked', escapeFormatting(cachedName.username)) + '**\n';
 			}
-			else if ( interaction.client.users.cache.has(kickedPlayer) ) {
-				text = text.replace( '**Mensch ', '**' + interaction.client.users.cache.get(kickedPlayer).username.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
-			}
-			*/
 		}
 		let curPos = gamePlayer.home.find( fieldPos => gameGrid[fieldPos] === emojiNumberList[fieldClicked] );
 		gameGrid[curPos] = emojiLastMove;
@@ -703,19 +736,21 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 		if ( gameGrid[newPos] !== gameBoard[isBig][newPos] ) {
 			let kickedPos = gamePlayers[isBig][gameGrid[newPos]].home.find( fieldPos => gameGrid[fieldPos] === gameBoard[isBig][fieldPos] );
 			gameGrid[kickedPos] = gameGrid[newPos];
-			/*
 			let kickedPlayer = players.find( player => player.emoji === gameGrid[newPos] )?.id;
-			if ( interaction.guild?.members?.cache.has(kickedPlayer) ) {
-				text = text.replace( '**Mensch ', '**' + interaction.guild.members.cache.get(kickedPlayer).displayName.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
+			if ( usernameCache.has(kickedPlayer) ) {
+				let cachedName = usernameCache.get(kickedPlayer);
+				if ( cachedName.guilds.has(interaction.guild_id) ) {
+					let guildUsername = cachedName.guilds.get(interaction.guild_id);
+					text += '**' + getMessage(interaction.guild_locale, 'dontgetangry_kicked', escapeFormatting(guildUsername)) + '**\n';
+				}
+				else text += '**' + getMessage(interaction.guild_locale, 'dontgetangry_kicked', escapeFormatting(cachedName.username)) + '**\n';
 			}
-			else if ( interaction.client.users.cache.has(kickedPlayer) ) {
-				text = text.replace( '**Mensch ', '**' + interaction.client.users.cache.get(kickedPlayer).username.replace( /@/g, '@\u200b' ).replace( /\)/g, '\\)' ) + ' ' );
-			}
-			*/
 		}
 		gameGrid[curPos] = emojiLastMove;
 		gameGrid[newPos] = gamePlayer.emoji;
 	}
+	if ( !text ) text += '**' + getMessage(interaction.guild_locale, 'dontgetangry') + '**\n';
+	text += interaction.message.content.split('\n')[1];
 	let moveTurn = true;
 	if ( gamePlayer.target.every( targetPos => ( gameGrid[targetPos] !== gameBoard[isBig][targetPos] && gameGrid[targetPos] !== emojiLastMove ) ) ) {
 		if ( !winnerText ) winnerText = `\n\n${emojiMedalList[0]} <@${currentPlayer}> (${gamePlayer.emoji})`;

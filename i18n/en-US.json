@@ -42,6 +42,7 @@
 	"dontgetangry_giveup_yes": "Give up!",
 	"dontgetangry_join": "Join the game as additional player!",
 	"dontgetangry_join_full": "The game is already full!",
+	"dontgetangry_kicked": "%s ärgere Dich nicht",
 	"dontgetangry_roll": "It's %s turn and they rolled a %s.",
 	"dontgetangry_roll_try": " This was their %s try.",
 	"dontgetangry_turn": "It's still %s turn.",

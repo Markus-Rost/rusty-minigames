@@ -48,6 +48,15 @@ export const got = gotDefault.extend( {
 }, gotSsrf );
 
 /**
+ * Escapes formatting.
+ * @param {String} [text] - The text to modify.
+ * @returns {String}
+ */
+export function escapeFormatting(text = '') {
+	return text.replaceAll( '\\', '\\\\' ).replace( /[`_*~:<>{}@|#\-\.]/g, '\\$&' ).replaceAll( '](', ']\\(' ).replaceAll( '//', '/\\/' );
+};
+
+/**
  * Update an application command.
  * @param {String} commandName 
  * @param {String?} guildId 
