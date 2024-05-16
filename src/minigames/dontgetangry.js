@@ -204,7 +204,7 @@ function dontgetangry_slash(interaction) {
 			buildButton('dontgetangry_join', ButtonStyle.Success, '🆕', getMessage(interaction.guild_locale, 'dontgetangry_join'))
 		) );
 	}
-	text += getMessage(interaction.guild_locale, 'game_turn', `<@${startingPlayer.id}> (${startingPlayer.color})`);
+	text += '\n' + getMessage(interaction.guild_locale, 'game_turn', `<@${startingPlayer.id}> (${startingPlayer.color})`);
 	return {
 		type: InteractionResponseType.ChannelMessageWithSource,
 		data: {
@@ -307,7 +307,7 @@ function dontgetangry_button(interaction, ...[player1, player2, player3, player4
 		if ( currentPlayer === player1 ) startingPlayer += `(${emojiPlayerColors[0]})`;
 		else if ( currentPlayer === player2 ) startingPlayer += `(${emojiPlayerColors[2]})`;
 		else if ( currentPlayer === player3 ) startingPlayer += `(${emojiPlayerColors[3]})`;
-		text += getMessage(interaction.guild_locale, 'game_turn', startingPlayer);
+		text += '\n' + getMessage(interaction.guild_locale, 'game_turn', startingPlayer);
 		let components = [ buildActionRow(
 			buildButton('dontgetangry_die', ButtonStyle.Primary, '🎲', getMessage(interaction.guild_locale, 'dontgetangry_die'))
 		) ];
