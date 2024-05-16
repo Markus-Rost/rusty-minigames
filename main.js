@@ -49,7 +49,7 @@ const server = createServer( (req, res) => {
 			});
 			res.write( response );
 			res.end();
-			console.log('Response time:', Date.now() - start);
+			if ( isDebug ) console.log('Response time:', Date.now() - start);
 		}
 		catch ( jsonerror ) {
 			console.log( jsonerror );

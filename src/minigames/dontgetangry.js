@@ -246,7 +246,7 @@ function dontgetangry_slash(interaction) {
  * @param {String[]} playerList
  * @returns {import('discord-api-types/v10').APIInteractionResponseUpdateMessage|import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
  */
-function dontgetangry_join(interaction, ...playerList) {
+function dontgetangry_join(interaction, playerList) {
 	let text = interaction.message.content.split('\n');
 	let gameGrid = [...text.splice(-11).join('\n')];
 	let isBig = ( gameGrid.length > 150 ? 1 : 0 );
