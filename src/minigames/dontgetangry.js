@@ -135,6 +135,8 @@ const gamePlayers = [
 	}
 ];
 
+const usernameCache = new Map();
+
 /**
  * @param {import('discord-api-types/v10').APIChatInputApplicationCommandInteraction} interaction
  * @returns {import('discord-api-types/v10').APIInteractionResponseChannelMessageWithSource}
@@ -635,7 +637,7 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePla
 		else if ( currentTry === 3 ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}rd**`);
 		else text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}.**`);
 	}
-	if ( components.every( component => component.disabled ) ) {
+	if ( components.every( row => row.components.every( component => component.disabled ) ) ) {
 		dontgetangry_next( dontgetangry_moveBlocked, interaction, gameGrid.slice(), isBig, numberRolled, currentTry, gamePlayer, players, currentPlayer, winnerText );
 	}
 	else if ( isCPU ) {
