@@ -1,5 +1,5 @@
 import { ApplicationCommandOptionType, ButtonStyle, InteractionResponseType, MessageFlags } from 'discord-api-types/v10';
-import { emojiNumberList, emojiMedalList, botPlayers, botPlayedGames, getCommandOption, getCommandUserOption, getMessage, buildActionRow, buildButton, updateMessage, escapeFormatting } from '../util.js';
+import { emojiNumberList, emojiMedalList, botPlayers, botPlayedGames, getCommandOption, getCommandUserOption, getMessage, buildActionRow, buildButton, delayedUpdateMessage, escapeFormatting } from '../util.js';
 
 // /eval code:updateApplicationCommand('dontgetangry')
 
@@ -495,7 +495,7 @@ function dontgetangry_button(interaction, [player1, player2, player3, player4, p
 		if ( isCPU ) {
 			botPlayedGames.add(interaction.message.id);
 			let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
-			dontgetangry_next( dontgetangry_rollDice, interaction, gameGrid.slice(), isBig, 0, nextGamePlayer, players, nextPlayer.id, winnerText );
+			delayedUpdateMessage( interaction, dontgetangry_rollDice, gameGrid.slice(), isBig, 0, nextGamePlayer, players, nextPlayer.id, winnerText );
 		}
 		return {
 			type: InteractionResponseType.UpdateMessage,
@@ -513,16 +513,20 @@ function dontgetangry_button(interaction, [player1, player2, player3, player4, p
 	}
 	if ( interaction.data.custom_id === 'dontgetangry_die' ) {
 		let currentTry = +( interaction.message.content.match(/\*\*([1-3])(\.|st|nd|rd)\*\*/)?.[1] || 0 );
+		let [result, nextFunction] = dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePlayer, players, currentPlayer, winnerText);
+		delayedUpdateMessage(interaction, ...nextFunction);
 		return {
 			type: InteractionResponseType.UpdateMessage,
-			data: dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePlayer, players, currentPlayer, winnerText)
+			data: result
 		};
 	}
 	let fieldClicked = +interaction.data.custom_id.replace( 'dontgetangry_', '' );
 	let numberRolled = +interaction.message.content.match(/\*\*([1-6])\*\*/)[1];
+	let [result, nextFunction] = dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText);
+	delayedUpdateMessage(interaction, ...nextFunction);
 	return {
 		type: InteractionResponseType.UpdateMessage,
-		data: dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText)
+		data: result
 	};
 }
 
@@ -538,7 +542,7 @@ function dontgetangry_button(interaction, [player1, player2, player3, player4, p
  * @param {emojiPlayerColor} players.emoji
  * @param {String} currentPlayer
  * @param {String} winnerText
- * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
+ * @returns {[import('discord-api-types/v10').APIInteractionResponseCallbackData, [import('../util.js').delayedFunction, ...any[]] | null]}
  */
 function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePlayer, players, currentPlayer, winnerText = '') {
 	let isCPU = botPlayers.has(currentPlayer);
@@ -671,21 +675,23 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePla
 		else if ( currentTry === 3 ) text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}rd**`);
 		else text += getMessage(interaction.guild_locale, 'dontgetangry_roll_try', `**${currentTry}.**`);
 	}
+	/** @type {[import('../util.js').delayedFunction, ...any[]]?} */
+	let nextFunction = null;
 	if ( components.every( row => row.components.every( component => component.disabled ) ) ) {
-		dontgetangry_next( dontgetangry_moveBlocked, interaction, gameGrid.slice(), isBig, numberRolled, currentTry, gamePlayer, players, currentPlayer, winnerText );
+		nextFunction = [dontgetangry_moveBlocked, gameGrid.slice(), isBig, numberRolled, currentTry, gamePlayer, players, currentPlayer, winnerText];
 	}
 	else if ( isCPU ) {
-		if ( fieldClickedCPU === -1 ) dontgetangry_next( dontgetangry_rollDice, interaction, gameGrid.slice(), isBig, currentTry, gamePlayer, players, currentPlayer, winnerText );
-		else dontgetangry_next( dontgetangry_movePiece, interaction, gameGrid.slice(), isBig, fieldClickedCPU, numberRolled, gamePlayer, players, currentPlayer, winnerText );
+		if ( fieldClickedCPU === -1 ) nextFunction = [dontgetangry_rollDice, gameGrid.slice(), isBig, currentTry, gamePlayer, players, currentPlayer, winnerText];
+		else nextFunction = [dontgetangry_movePiece, gameGrid.slice(), isBig, fieldClickedCPU, numberRolled, gamePlayer, players, currentPlayer, winnerText];
 	}
 	else botPlayedGames.delete(interaction.message.id);
-	return {
+	return [{
 		content: text + winnerText + '\n\n' + gameGrid.join(''),
 		allowed_mentions: {
 			users: [currentPlayer]
 		},
 		components
-	};
+	}, nextFunction];
 }
 
 /**
@@ -701,7 +707,7 @@ function dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePla
  * @param {emojiPlayerColor} players.emoji
  * @param {String} currentPlayer
  * @param {String} winnerText
- * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
+ * @returns {[import('discord-api-types/v10').APIInteractionResponseCallbackData, [import('../util.js').delayedFunction, ...any[]] | null]}
  */
 function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText = '') {
 	let isCPU = botPlayers.has(currentPlayer);
@@ -798,17 +804,19 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
 	if ( gameGrid.includes( emojiNumberList[1] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[1])] = gamePlayer.emoji;
 	if ( gameGrid.includes( emojiNumberList[2] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[2])] = gamePlayer.emoji;
 	if ( gameGrid.includes( emojiNumberList[3] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[3])] = gamePlayer.emoji;
+	/** @type {[import('../util.js').delayedFunction, ...any[]]?} */
+	let nextFunction = null;
 	if ( isCPU && components.length ) {
 		let nextGameGrid = gameGrid.slice();
 		if ( nextGameGrid.includes( emojiLastMove ) ) nextGameGrid[nextGameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][nextGameGrid.indexOf(emojiLastMove)];
 		let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
-		dontgetangry_next( dontgetangry_rollDice, interaction, nextGameGrid, isBig, 0, nextGamePlayer, players, nextPlayer.id, winnerText );
+		nextFunction = [dontgetangry_rollDice, nextGameGrid, isBig, 0, nextGamePlayer, players, nextPlayer.id, winnerText];
 	}
 	else botPlayedGames.delete(interaction.message.id);
-	return {
+	return [{
 		content: text + winnerText + '\n\n' + gameGrid.join(''),
 		components, allowed_mentions
-	};
+	}, nextFunction];
 }
 
 /**
@@ -824,7 +832,7 @@ function dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numb
  * @param {emojiPlayerColor} players.emoji
  * @param {String} currentPlayer
  * @param {String} winnerText
- * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
+ * @returns {[import('discord-api-types/v10').APIInteractionResponseCallbackData, [import('../util.js').delayedFunction, ...any[]] | null]}
  */
 function dontgetangry_moveBlocked(interaction, gameGrid, isBig, numberRolled, currentTry, gamePlayer, players, currentPlayer, winnerText = '') {
 	let isCPU = botPlayers.has(currentPlayer);
@@ -869,35 +877,19 @@ function dontgetangry_moveBlocked(interaction, gameGrid, isBig, numberRolled, cu
 	if ( gameGrid.includes( emojiNumberList[1] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[1])] = gamePlayer.emoji;
 	if ( gameGrid.includes( emojiNumberList[2] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[2])] = gamePlayer.emoji;
 	if ( gameGrid.includes( emojiNumberList[3] ) ) gameGrid[gameGrid.indexOf(emojiNumberList[3])] = gamePlayer.emoji;
+	/** @type {[import('../util.js').delayedFunction, ...any[]]?} */
+	let nextFunction = null;
 	if ( isCPU && components.length ) {
 		let nextGameGrid = gameGrid.slice();
 		if ( nextGameGrid.includes( emojiLastMove ) ) nextGameGrid[nextGameGrid.indexOf(emojiLastMove)] = gameBoard[isBig][nextGameGrid.indexOf(emojiLastMove)];
 		let nextGamePlayer = gamePlayers[isBig][nextPlayer.emoji];
-		dontgetangry_next( dontgetangry_rollDice, interaction, nextGameGrid, isBig, currentTry, nextGamePlayer, players, nextPlayer.id, winnerText );
+		nextFunction = [dontgetangry_rollDice, nextGameGrid, isBig, currentTry, nextGamePlayer, players, nextPlayer.id, winnerText];
 	}
 	else botPlayedGames.delete(interaction.message.id);
-	return {
+	return [{
 		content: text + winnerText + '\n\n' + gameGrid.join(''),
 		components, allowed_mentions
-	}
-}
-
-/**
- * @callback dontgetangryFunction
- * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
- * @param {...any} args
- * @returns {import('discord-api-types/v10').APIInteractionResponseCallbackData}
- */
-
-/**
- * @param {dontgetangryFunction} nextFunction 
- * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction 
- * @param {...any} args 
- */
-function dontgetangry_next(nextFunction, interaction, ...args) {
-	setTimeout( () => {
-		updateMessage(interaction, nextFunction(interaction, ...args));
-	}, 3000);
+	}, nextFunction];
 }
 
 export default {

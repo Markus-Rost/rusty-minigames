@@ -165,13 +165,36 @@ export function buildButton(custom_id, style, emoji, label, disabled) {
 /** 
  * @param {import('discord-api-types/v10').APIInteraction} interaction
  * @param {import('discord-api-types/v10').APIInteractionResponseCallbackData} message
+ * @param {Boolean} [retry=false]
  */
-export function updateMessage(interaction, message) {
+export function updateMessage(interaction, message, retry = false) {
 	if ( !message.components ) message.components = [];
 	return got.patch( RouteBases.api + Routes.webhookMessage(interaction.application_id, interaction.token), {
 		json: message,
 		throwHttpErrors: true
 	} ).catch( error => {
-		console.log( `- Error while updating to the interaction message: ${error}` );
+		console.log( `- ${retry+1}. Error while updating the interaction message: ${error}` );
+		if ( !retry ) return updateMessage(interaction, message, true);
 	} );
+}
+
+/**
+ * @callback delayedFunction
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction
+ * @param {...any} args
+ * @returns {[import('discord-api-types/v10').APIInteractionResponseCallbackData, [delayedFunction, ...any[]] | null]}
+ */
+
+/**
+ * @param {import('discord-api-types/v10').APIMessageComponentButtonInteraction} interaction 
+ * @param {delayedFunction} nextFunction 
+ * @param {...any} args 
+ */
+export function delayedUpdateMessage(interaction, nextFunction, ...args) {
+	setTimeout( () => {
+		let [result, nextArgs] = nextFunction(interaction, ...args);
+		updateMessage(interaction, result).then( () => {
+			if ( nextArgs ) delayedUpdateMessage(interaction, ...nextArgs);
+		} );
+	}, 3000);
 }
