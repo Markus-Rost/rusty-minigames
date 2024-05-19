@@ -514,7 +514,7 @@ function dontgetangry_button(interaction, [player1, player2, player3, player4, p
 	if ( interaction.data.custom_id === 'dontgetangry_die' ) {
 		let currentTry = +( interaction.message.content.match(/\*\*([1-3])(\.|st|nd|rd)\*\*/)?.[1] || 0 );
 		let [result, nextFunction] = dontgetangry_rollDice(interaction, gameGrid, isBig, currentTry, gamePlayer, players, currentPlayer, winnerText);
-		delayedUpdateMessage(interaction, ...nextFunction);
+		if ( nextFunction ) delayedUpdateMessage(interaction, ...nextFunction);
 		return {
 			type: InteractionResponseType.UpdateMessage,
 			data: result
@@ -523,7 +523,7 @@ function dontgetangry_button(interaction, [player1, player2, player3, player4, p
 	let fieldClicked = +interaction.data.custom_id.replace( 'dontgetangry_', '' );
 	let numberRolled = +interaction.message.content.match(/\*\*([1-6])\*\*/)[1];
 	let [result, nextFunction] = dontgetangry_movePiece(interaction, gameGrid, isBig, fieldClicked, numberRolled, gamePlayer, players, currentPlayer, winnerText);
-	delayedUpdateMessage(interaction, ...nextFunction);
+	if ( nextFunction ) delayedUpdateMessage(interaction, ...nextFunction);
 	return {
 		type: InteractionResponseType.UpdateMessage,
 		data: result
