@@ -53,7 +53,9 @@ export const got = gotDefault.extend( {
  * @returns {String}
  */
 export function escapeFormatting(text = '') {
-	return text.replaceAll( '\\', '\\\\' ).replace( /[`_*~:<>{}@|#\-\.]/g, '\\$&' ).replaceAll( '](', ']\\(' ).replaceAll( '//', '/\\/' );
+	text = text.replaceAll( '\\', '\\\\' ).replaceAll( '//', '/\\/' ).replaceAll( '](', ']\\(' ).replace( /[`_*~:<>{}@|]/g, '\\$&' );
+	text = text.replace( /^#+ /gm, '\\$&' ).replace( /^(\s*)- /gm, '$1\\- ' ).replace( /^(\s*\d+)\. /gm, '$1\\. ' );
+	return text;
 };
 
 /**
