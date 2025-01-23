@@ -581,7 +581,7 @@ function chess_button(interaction, [player1, player2, currentPlayer]) {
 /**
  * @param {String} piece
  * @param {Number} pos
- * @param {import('discord-api-types/v10').LocaleString} locale
+ * @param {import('discord-api-types/v10').Locale} locale
  * @returns {String}
  */
  function chess_getPosName(piece, pos, locale) {
@@ -689,7 +689,7 @@ function chess_isCheck(board, opponent) {
  * @param {String[]} board
  * @param {'w'|'b'} player
  * @param {String} castling
- * @param {import('discord-api-types/v10').LocaleString} locale
+ * @param {import('discord-api-types/v10').Locale} locale
  * @returns {import('discord-api-types/v10').APIActionRowComponent<import('discord-api-types/v10').APIButtonComponentWithCustomId>[]}
  */
 function chess_getPieces(board, player, castling, locale) {

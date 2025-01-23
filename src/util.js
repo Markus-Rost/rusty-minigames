@@ -1,10 +1,8 @@
 import { inspect } from 'node:util';
 import { readdir, existsSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import gotDefault from 'got';
 import { gotSsrf } from 'got-ssrf';
 import { ApplicationCommandOptionType, ComponentType, FormattingPatterns, RouteBases, Routes } from 'discord-api-types/v10';
-const require = createRequire(import.meta.url);
 
 inspect.defaultOptions = {compact: false, breakLength: Infinity};
 
@@ -14,8 +12,8 @@ globalThis.isDebug = ( process.argv[2] === 'debug' );
 const allLangs = new Map();
 readdir( './i18n', (error, files) => {
 	if ( error ) return error;
-	files.filter( file => file.endsWith('.json') ).forEach( file => {
-		var translations = require(`../i18n/${file}`);
+	files.filter( file => file.endsWith('.json') ).forEach( async file => {
+		var translations = ( await import(`../i18n/${file}`, {with: {type: 'json'}}) ).default;
 		var lang = file.slice(0, -5);
 		allLangs.set(lang, new Map(Object.entries(translations)));
 	} );
@@ -23,7 +21,7 @@ readdir( './i18n', (error, files) => {
 
 /**
  * Get a translated message.
- * @param {import('discord-api-types/v10').LocaleString} locale
+ * @param {import('discord-api-types/v10').Locale} locale
  * @param {String} message
  * @param {String[]} args
  * @returns {String}
@@ -62,12 +60,13 @@ export function escapeFormatting(text = '') {
  * Update an application command.
  * @param {String} commandName 
  * @param {String?} guildId 
- * @returns {String}
+ * @returns {Promise<String>}
  */
-export function updateApplicationCommand(commandName, guildId) {
+export async function updateApplicationCommand(commandName, guildId) {
 	if ( !existsSync(`./commands/${commandName}.json`) ) return 'This command does not exist.';
+	const commandData = ( await import(`../commands/${commandName}.json`, {with: {type: 'json'}}) ).default;
 	return got.post( RouteBases.api + ( guildId ? Routes.applicationGuildCommands(process.env.bot, guildId) : Routes.applicationCommands(process.env.bot) ), {
-		json: require(`../commands/${commandName}.json`),
+		json: commandData,
 		headers: {
 			authorization: 'Bot ' + process.env.token
 		}
